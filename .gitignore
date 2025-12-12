@@ -1,0 +1,31 @@
+# Python
+*.pyc
+__pycache__/
+*.py
+
+# Data files (keep only the final JSON)
+*.csv
+childcare_data_enhanced.json
+childcare_with_coords.json
+facilities_with_jittered_coords.json
+
+# OS files
+*.Zone.Identifier
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Claude
+.claude/
+
+# Large files
+Addresses_with_parcel_number_*.csv
+get-pip.py
+
+# Logs
+*.log
