@@ -176,6 +176,8 @@
             const [markers, setMarkers] = useState(true);
             const [modal, setModal] = useState(false);
             const [page, setPage] = useState(1);
+            const [mapBoundsFilter, setMapBoundsFilter] = useState(false);
+            const [currentBounds, setCurrentBounds] = useState(null);
             const perPage = 25;
             
             const mapRef = useRef(null);
@@ -210,8 +212,17 @@
                 if (minCap) f = f.filter(x => (x.facility_capacity || 0) >= parseInt(minCap));
                 if (maxCap) f = f.filter(x => (x.facility_capacity || 0) <= parseInt(maxCap));
                 if (sfusdOnly) f = f.filter(x => x.sfusd_site === 'Yes');
+
+                // Filter by map bounds if enabled
+                if (mapBoundsFilter && currentBounds) {
+                    f = f.filter(x => {
+                        if (!x.latitude || !x.longitude) return false;
+                        return currentBounds.contains([x.latitude, x.longitude]);
+                    });
+                }
+
                 return f;
-            }, [data, search, typeF, statusF, elfaF, minCap, maxCap, sfusdOnly]);
+            }, [data, search, typeF, statusF, elfaF, minCap, maxCap, sfusdOnly, mapBoundsFilter, currentBounds]);
             
             const stats = useMemo(() => {
                 const cap = filtered.reduce((s, f) => s + (f.facility_capacity || 0), 0);
@@ -287,11 +298,19 @@
                     mapInst.current = m;
                     heatLayer.current = L.layerGroup().addTo(m);
                     markerLayer.current = L.layerGroup().addTo(m);
+
+                    // Add map bounds change listener
+                    m.on('moveend zoomend', () => {
+                        if (mapBoundsFilter) {
+                            setCurrentBounds(m.getBounds());
+                        }
+                    });
+
                     console.log('✓ Map initialized successfully with SF bounds and legend');
                 } catch (e) {
                     console.error('✗ Map initialization failed:', e);
                 }
-            }, [data.length]);
+            }, [data.length, mapBoundsFilter]);
             
             useEffect(() => {
                 if (!mapInst.current) {
@@ -479,12 +498,18 @@
                                 <div className="map-controls">
                                     <button className={`btn ${heatmap ? 'active' : ''}`} onClick={() => setHeatmap(!heatmap)}>🔥 Heatmap</button>
                                     <button className={`btn ${markers ? 'active' : ''}`} onClick={() => setMarkers(!markers)}>📍 Markers</button>
+                                    <button className={`btn ${mapBoundsFilter ? 'active' : ''}`} onClick={() => {
+                                        setMapBoundsFilter(!mapBoundsFilter);
+                                        if (!mapBoundsFilter && mapInst.current) {
+                                            setCurrentBounds(mapInst.current.getBounds());
+                                        }
+                                    }}>🗺️ Filter by Map</button>
                                     <button className="btn" onClick={() => mapInst.current?.setView([37.7749, -122.4194], 12)}>🎯 Reset</button>
                                 </div>
                             </div>
                             <div id="map" ref={mapRef}></div>
                             <div className="map-note">
-                                📍 Click markers for details • Use scroll wheel to zoom • Click & drag to pan • Map is limited to SF area •
+                                📍 Click markers for details • Use scroll wheel to zoom • Click & drag to pan • Click "🗺️ Filter by Map" to show only facilities in current view •
                                 Legend shows status colors (green=licensed) and location accuracy (orange border=ZIP-based approximation)
                             </div>
                         </div>
