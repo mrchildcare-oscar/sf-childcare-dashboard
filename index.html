@@ -244,7 +244,7 @@
                 }
 
                 return f;
-            }, [data, search, typeF, statusF, elfaF, districtF, minCap, maxCap, sfusdOnly, mapBoundsFilter, currentBounds]);
+            }, [data, search, typeF, statusF, elfaF, districtF, headStartF, minCap, maxCap, sfusdOnly, mapBoundsFilter, currentBounds]);
             
             const stats = useMemo(() => {
                 const cap = filtered.reduce((s, f) => s + (f.facility_capacity || 0), 0);
