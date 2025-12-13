@@ -217,7 +217,8 @@
                     const s = search.toLowerCase();
                     f = f.filter(x => x.facility_name?.toLowerCase().includes(s) ||
                                       x.facility_address?.toLowerCase().includes(s) ||
-                                      x.sfusd_school_name?.toLowerCase().includes(s));
+                                      x.sfusd_school_name?.toLowerCase().includes(s) ||
+                                      String(x.facility_number).includes(s));
                 }
                 if (typeF.length) f = f.filter(x => typeF.includes(x.facility_type));
                 if (statusF.length) f = f.filter(x => statusF.includes(x.facility_status));
@@ -446,7 +447,7 @@
                         <div className="card sidebar">
                             <div className="sidebar-header">
                                 <h2>Filters</h2>
-                                <input className="search-box" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} />
+                                <input className="search-box" placeholder="Search by name, address, license #..." value={search} onChange={e => setSearch(e.target.value)} />
                             </div>
 
                             {activeFilterCount > 0 && (
