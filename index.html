@@ -109,6 +109,7 @@
         .badge-elfa { background: #e7d4f5; color: #5a1c7d; }
         .badge-sfusd { background: #d1c4e9; color: #4a148c; }
         .badge-headstart { background: #fff3e0; color: #e65100; }
+        .badge-cspp { background: #e8f5e9; color: #2e7d32; }
         .facility-details { font-size: 13px; color: #666; line-height: 1.6; }
         .facility-capacity { display: inline-block; margin-top: 8px; padding: 4px 10px; background: #f0f0f0; border-radius: 6px; font-size: 12px; font-weight: 600; }
         
@@ -174,6 +175,7 @@
             const [maxCap, setMaxCap] = useState('');
             const [sfusdOnly, setSfusdOnly] = useState(false);
             const [headStartOnly, setHeadStartOnly] = useState(false);
+            const [csppOnly, setCsppOnly] = useState(false);
             const [districtF, setDistrictF] = useState([]);
             const [heatmap, setHeatmap] = useState(true);
             const [markers, setMarkers] = useState(true);
@@ -230,6 +232,7 @@
                 if (maxCap) f = f.filter(x => (x.facility_capacity || 0) <= parseInt(maxCap));
                 if (sfusdOnly) f = f.filter(x => x.sfusd_site === 'Yes');
                 if (headStartOnly) f = f.filter(x => x.head_start_program);
+                if (csppOnly) f = f.filter(x => x.cspp_program);
 
                 // Filter by map bounds if enabled
                 if (mapBoundsFilter && currentBounds) {
@@ -240,7 +243,7 @@
                 }
 
                 return f;
-            }, [data, search, typeF, statusF, elfaF, districtF, minCap, maxCap, sfusdOnly, headStartOnly, mapBoundsFilter, currentBounds]);
+            }, [data, search, typeF, statusF, elfaF, districtF, minCap, maxCap, sfusdOnly, headStartOnly, csppOnly, mapBoundsFilter, currentBounds]);
             
             const stats = useMemo(() => {
                 const cap = filtered.reduce((s, f) => s + (f.facility_capacity || 0), 0);
@@ -367,7 +370,8 @@
                         const districtText = f.supervisor_district ? `<br>District ${f.supervisor_district} - ${f.supervisor_name}` : '';
                         const neighborhoodText = f.neighborhood ? `<br>Neighborhood: ${f.neighborhood}` : '';
                         const headStartText = f.head_start_program ? `<br><strong style="color:#e65100">⭐ ${f.head_start_program}</strong>` : '';
-                        m.bindPopup(`<strong>${f.facility_name}</strong><br>License #: ${f.facility_number}<br>Type: ${f.facility_type}<br>${addressText}${districtText}${neighborhoodText}${headStartText}<br>Capacity: ${f.facility_capacity}<br>Status: ${f.facility_status}${f.sfusd_site === 'Yes' ? '<br><strong style="color:#673AB7">SFUSD: ' + f.sfusd_school_name + '</strong>' : ''}${isJittered ? '<br><em style="color:#FF8C00">⚠️ Location approximate</em>' : ''}`);
+                        const csppText = f.cspp_program ? `<br><strong style="color:#2e7d32">✓ CSPP Participant</strong>` : '';
+                        m.bindPopup(`<strong>${f.facility_name}</strong><br>License #: ${f.facility_number}<br>Type: ${f.facility_type}<br>${addressText}${districtText}${neighborhoodText}${headStartText}${csppText}<br>Capacity: ${f.facility_capacity}<br>Status: ${f.facility_status}${f.sfusd_site === 'Yes' ? '<br><strong style="color:#673AB7">SFUSD: ' + f.sfusd_school_name + '</strong>' : ''}${isJittered ? '<br><em style="color:#FF8C00">⚠️ Location approximate</em>' : ''}`);
                         m.addTo(markerLayer.current);
                         markerCount++;
                     });
@@ -412,10 +416,11 @@
                 setMaxCap('');
                 setSfusdOnly(false);
                 setHeadStartOnly(false);
+                setCsppOnly(false);
             };
 
             const activeFilterCount = typeF.length + statusF.length + elfaF.length + districtF.length +
-                                     (minCap ? 1 : 0) + (maxCap ? 1 : 0) + (sfusdOnly ? 1 : 0) + (headStartOnly ? 1 : 0) + (search ? 1 : 0);
+                                     (minCap ? 1 : 0) + (maxCap ? 1 : 0) + (sfusdOnly ? 1 : 0) + (headStartOnly ? 1 : 0) + (csppOnly ? 1 : 0) + (search ? 1 : 0);
             
             if (!data.length) return <div className="loading"><div className="spinner"></div><div>Loading data...</div></div>;
             
@@ -463,6 +468,7 @@
                                         {maxCap && <div className="filter-chip">Max: {maxCap} <span className="filter-chip-close" onClick={() => setMaxCap('')}>×</span></div>}
                                         {sfusdOnly && <div className="filter-chip">SFUSD Only <span className="filter-chip-close" onClick={() => setSfusdOnly(false)}>×</span></div>}
                                         {headStartOnly && <div className="filter-chip">Head Start <span className="filter-chip-close" onClick={() => setHeadStartOnly(false)}>×</span></div>}
+                                        {csppOnly && <div className="filter-chip">CSPP <span className="filter-chip-close" onClick={() => setCsppOnly(false)}>×</span></div>}
                                         <button className="clear-all-btn" onClick={clearAllFilters}>Clear All</button>
                                     </div>
                                 </div>
@@ -550,6 +556,11 @@
                                             <label htmlFor="headstart">Head Start</label>
                                             <span className="filter-count">{data.filter(f => f.head_start_program).length}</span>
                                         </div>
+                                        <div className="filter-option">
+                                            <input type="checkbox" id="cspp" checked={csppOnly} onChange={e => setCsppOnly(e.target.checked)} />
+                                            <label htmlFor="cspp">CSPP</label>
+                                            <span className="filter-count">{data.filter(f => f.cspp_program).length}</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -617,6 +628,7 @@
                                         {f.elfa_contracted === 'Yes' && <span className="badge badge-elfa">ELFA</span>}
                                         {f.sfusd_site === 'Yes' && <span className="badge badge-sfusd">SFUSD</span>}
                                         {f.head_start_program && <span className="badge badge-headstart">HEAD START</span>}
+                                        {f.cspp_program && <span className="badge badge-cspp">CSPP</span>}
                                         {f.tags?.address_source === 'zip_code_approximate' && <span className="badge" style={{background: '#fff3cd', color: '#856404'}}>📍 ZIP</span>}
                                     </div>
                                 </div>
@@ -681,7 +693,14 @@
                                 • Wu Yee Children's Services: 21 facilities<br/>
                                 • Kai Ming Head Start: 13 facilities<br/>
                                 • Mission Head Start: 12 facilities</p>
-                                <p>Head Start facilities are tagged throughout the dashboard with an orange <span style={{background: '#fff3e0', color: '#e65100', padding: '2px 6px', borderRadius: '8px', fontSize: '10px', fontWeight: '600'}}>HEAD START</span> badge and can be filtered using the "Head Start Program" filter.</p>
+                                <p>Head Start facilities are tagged throughout the dashboard with an orange <span style={{background: '#fff3e0', color: '#e65100', padding: '2px 6px', borderRadius: '8px', fontSize: '10px', fontWeight: '600'}}>HEAD START</span> badge and can be filtered using the "Head Start" checkbox in Special filters.</p>
+                            </div>
+                            <div className="modal-section">
+                                <h3>✓ CSPP (California State Preschool Program)</h3>
+                                <p><strong>Coverage:</strong> 70 facilities participate in the state-funded California State Preschool Program.</p>
+                                <p><strong>Programs Included:</strong> Chinatown Community, Compass Family Services, FACES SF, Holy Family Day Home, Kai Ming, Mission Child Care Consortium, Nihonmachi Little Friends, South of Market Child Care, and Wu Yee Children's Services.</p>
+                                <p><strong>Overlap with Head Start:</strong> 46 facilities participate in both federal Head Start and state CSPP programs, providing comprehensive early childhood education funding.</p>
+                                <p>CSPP facilities are tagged with a green <span style={{background: '#e8f5e9', color: '#2e7d32', padding: '2px 6px', borderRadius: '8px', fontSize: '10px', fontWeight: '600'}}>CSPP</span> badge and can be filtered using the "CSPP" checkbox in Special filters.</p>
                             </div>
                             <div className="modal-section">
                                 <h3>📊 Data Sources</h3>
