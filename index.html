@@ -173,8 +173,8 @@
             const [minCap, setMinCap] = useState('');
             const [maxCap, setMaxCap] = useState('');
             const [sfusdOnly, setSfusdOnly] = useState(false);
+            const [headStartOnly, setHeadStartOnly] = useState(false);
             const [districtF, setDistrictF] = useState([]);
-            const [headStartF, setHeadStartF] = useState([]);
             const [heatmap, setHeatmap] = useState(true);
             const [markers, setMarkers] = useState(true);
             const [modal, setModal] = useState(false);
@@ -209,10 +209,6 @@
                 return unique.sort((a, b) => parseInt(a.number) - parseInt(b.number));
             }, [data]);
 
-            const headStartPrograms = useMemo(() => {
-                return [...new Set(data.map(f => f.head_start_program).filter(Boolean))].sort();
-            }, [data]);
-
             const filtered = useMemo(() => {
                 let f = [...data];
                 if (search) {
@@ -233,7 +229,7 @@
                 if (minCap) f = f.filter(x => (x.facility_capacity || 0) >= parseInt(minCap));
                 if (maxCap) f = f.filter(x => (x.facility_capacity || 0) <= parseInt(maxCap));
                 if (sfusdOnly) f = f.filter(x => x.sfusd_site === 'Yes');
-                if (headStartF.length) f = f.filter(x => headStartF.includes(x.head_start_program));
+                if (headStartOnly) f = f.filter(x => x.head_start_program);
 
                 // Filter by map bounds if enabled
                 if (mapBoundsFilter && currentBounds) {
@@ -244,7 +240,7 @@
                 }
 
                 return f;
-            }, [data, search, typeF, statusF, elfaF, districtF, headStartF, minCap, maxCap, sfusdOnly, mapBoundsFilter, currentBounds]);
+            }, [data, search, typeF, statusF, elfaF, districtF, minCap, maxCap, sfusdOnly, headStartOnly, mapBoundsFilter, currentBounds]);
             
             const stats = useMemo(() => {
                 const cap = filtered.reduce((s, f) => s + (f.facility_capacity || 0), 0);
@@ -412,14 +408,14 @@
                 setStatusF([]);
                 setElfaF([]);
                 setDistrictF([]);
-                setHeadStartF([]);
                 setMinCap('');
                 setMaxCap('');
                 setSfusdOnly(false);
+                setHeadStartOnly(false);
             };
 
-            const activeFilterCount = typeF.length + statusF.length + elfaF.length + districtF.length + headStartF.length +
-                                     (minCap ? 1 : 0) + (maxCap ? 1 : 0) + (sfusdOnly ? 1 : 0) + (search ? 1 : 0);
+            const activeFilterCount = typeF.length + statusF.length + elfaF.length + districtF.length +
+                                     (minCap ? 1 : 0) + (maxCap ? 1 : 0) + (sfusdOnly ? 1 : 0) + (headStartOnly ? 1 : 0) + (search ? 1 : 0);
             
             if (!data.length) return <div className="loading"><div className="spinner"></div><div>Loading data...</div></div>;
             
@@ -463,10 +459,10 @@
                                             const dist = districts.find(x => x.number === d);
                                             return <div key={d} className="filter-chip">District {d} - {dist?.name} <span className="filter-chip-close" onClick={() => toggle(districtF, setDistrictF, d)}>×</span></div>;
                                         })}
-                                        {headStartF.map(h => <div key={h} className="filter-chip">{h} <span className="filter-chip-close" onClick={() => toggle(headStartF, setHeadStartF, h)}>×</span></div>)}
                                         {minCap && <div className="filter-chip">Min: {minCap} <span className="filter-chip-close" onClick={() => setMinCap('')}>×</span></div>}
                                         {maxCap && <div className="filter-chip">Max: {maxCap} <span className="filter-chip-close" onClick={() => setMaxCap('')}>×</span></div>}
                                         {sfusdOnly && <div className="filter-chip">SFUSD Only <span className="filter-chip-close" onClick={() => setSfusdOnly(false)}>×</span></div>}
+                                        {headStartOnly && <div className="filter-chip">Head Start <span className="filter-chip-close" onClick={() => setHeadStartOnly(false)}>×</span></div>}
                                         <button className="clear-all-btn" onClick={clearAllFilters}>Clear All</button>
                                     </div>
                                 </div>
@@ -549,13 +545,11 @@
                                             <label htmlFor="sfusd">SFUSD Only</label>
                                             <span className="filter-count">{data.filter(f => f.sfusd_site === 'Yes').length}</span>
                                         </div>
-                                        {headStartPrograms.map(prog => (
-                                            <div key={prog} className="filter-option">
-                                                <input type="checkbox" id={'special-' + prog} checked={headStartF.includes(prog)} onChange={() => toggle(headStartF, setHeadStartF, prog)} />
-                                                <label htmlFor={'special-' + prog}>{prog}</label>
-                                                <span className="filter-count">{data.filter(f => f.head_start_program === prog).length}</span>
-                                            </div>
-                                        ))}
+                                        <div className="filter-option">
+                                            <input type="checkbox" id="headstart" checked={headStartOnly} onChange={e => setHeadStartOnly(e.target.checked)} />
+                                            <label htmlFor="headstart">Head Start</label>
+                                            <span className="filter-count">{data.filter(f => f.head_start_program).length}</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
