@@ -218,7 +218,12 @@
                 if (typeF.length) f = f.filter(x => typeF.includes(x.facility_type));
                 if (statusF.length) f = f.filter(x => statusF.includes(x.facility_status));
                 if (elfaF.length) f = f.filter(x => elfaF.includes(x.elfa_contracted));
-                if (districtF.length) f = f.filter(x => districtF.includes(x.supervisor_district));
+                if (districtF.length) f = f.filter(x => {
+                    if (districtF.includes('none')) {
+                        return districtF.includes(x.supervisor_district) || !x.supervisor_district;
+                    }
+                    return districtF.includes(x.supervisor_district);
+                });
                 if (minCap) f = f.filter(x => (x.facility_capacity || 0) >= parseInt(minCap));
                 if (maxCap) f = f.filter(x => (x.facility_capacity || 0) <= parseInt(maxCap));
                 if (sfusdOnly) f = f.filter(x => x.sfusd_site === 'Yes');
@@ -443,6 +448,9 @@
                                         {statusF.map(s => <div key={s} className="filter-chip">{s} <span className="filter-chip-close" onClick={() => toggle(statusF, setStatusF, s)}>×</span></div>)}
                                         {elfaF.map(e => <div key={e} className="filter-chip">ELFA: {e} <span className="filter-chip-close" onClick={() => toggle(elfaF, setElfaF, e)}>×</span></div>)}
                                         {districtF.map(d => {
+                                            if (d === 'none') {
+                                                return <div key={d} className="filter-chip">No District Info <span className="filter-chip-close" onClick={() => toggle(districtF, setDistrictF, d)}>×</span></div>;
+                                            }
                                             const dist = districts.find(x => x.number === d);
                                             return <div key={d} className="filter-chip">District {d} - {dist?.name} <span className="filter-chip-close" onClick={() => toggle(districtF, setDistrictF, d)}>×</span></div>;
                                         })}
@@ -468,6 +476,14 @@
                                                 <span className="filter-count">{data.filter(f => f.supervisor_district === dist.number).length}</span>
                                             </div>
                                         ))}
+                                        <div key="no-district" className="filter-option">
+                                            <input type="checkbox" id="districtNone" checked={districtF.includes('none')} onChange={() => toggle(districtF, setDistrictF, 'none')} />
+                                            <label htmlFor="districtNone">No District Info</label>
+                                            <span className="filter-count">{data.filter(f => !f.supervisor_district).length}</span>
+                                        </div>
+                                        <div style={{padding: '8px 0', fontSize: '11px', color: '#666', lineHeight: '1.4'}}>
+                                            ⓘ District assignments based on address geocoding. {data.filter(f => !f.supervisor_district).length} facilities with ZIP-only locations may need manual verification.
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -632,6 +648,17 @@
                                 <h3>📍 Location Data</h3>
                                 <p>Most facilities have been geocoded to precise addresses. Facilities without street addresses (typically small family child care homes) are displayed using <strong>jittered ZIP code centroids</strong> - approximate locations with small random offsets to prevent stacking.</p>
                                 <p><strong>Map Legend:</strong><br/>🔵 White-bordered markers: Geocoded addresses<br/>🟠 Orange-bordered markers: ZIP-based (jittered)</p>
+                            </div>
+                            <div className="modal-section">
+                                <h3>🗳️ Supervisor District Data</h3>
+                                <p><strong>Coverage:</strong> 1,100 out of 1,144 facilities (96%) have been assigned to supervisor districts.</p>
+                                <p><strong>Assignment Method:</strong><br/>
+                                • 488 facilities: Exact match via address database<br/>
+                                • 612 facilities: Proximity match (within 100 meters)<br/>
+                                • 44 facilities: No district assignment (ZIP-based approximations)</p>
+                                <p><strong>⚠️ Important Limitations:</strong><br/>
+                                Facilities with ZIP-only locations may be near district borders. Their assigned districts should be verified manually for accuracy. Use the "No District Info" filter to identify these facilities.</p>
+                                <p><strong>Current Supervisors:</strong> Data reflects supervisors as of December 2024.</p>
                             </div>
                             <div className="modal-section">
                                 <h3>📊 Data Sources</h3>
