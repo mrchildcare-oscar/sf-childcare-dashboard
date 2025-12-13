@@ -172,6 +172,7 @@
             const [minCap, setMinCap] = useState('');
             const [maxCap, setMaxCap] = useState('');
             const [sfusdOnly, setSfusdOnly] = useState(false);
+            const [districtF, setDistrictF] = useState([]);
             const [heatmap, setHeatmap] = useState(true);
             const [markers, setMarkers] = useState(true);
             const [modal, setModal] = useState(false);
@@ -197,6 +198,14 @@
             
             const types = useMemo(() => [...new Set(data.map(f => f.facility_type))].sort(), [data]);
             const statuses = useMemo(() => [...new Set(data.map(f => f.facility_status))].sort(), [data]);
+            const districts = useMemo(() => {
+                const dists = data.filter(f => f.supervisor_district).map(f => ({
+                    number: f.supervisor_district,
+                    name: f.supervisor_name
+                }));
+                const unique = [...new Map(dists.map(d => [d.number, d])).values()];
+                return unique.sort((a, b) => parseInt(a.number) - parseInt(b.number));
+            }, [data]);
             
             const filtered = useMemo(() => {
                 let f = [...data];
@@ -209,6 +218,7 @@
                 if (typeF.length) f = f.filter(x => typeF.includes(x.facility_type));
                 if (statusF.length) f = f.filter(x => statusF.includes(x.facility_status));
                 if (elfaF.length) f = f.filter(x => elfaF.includes(x.elfa_contracted));
+                if (districtF.length) f = f.filter(x => districtF.includes(x.supervisor_district));
                 if (minCap) f = f.filter(x => (x.facility_capacity || 0) >= parseInt(minCap));
                 if (maxCap) f = f.filter(x => (x.facility_capacity || 0) <= parseInt(maxCap));
                 if (sfusdOnly) f = f.filter(x => x.sfusd_site === 'Yes');
@@ -222,7 +232,7 @@
                 }
 
                 return f;
-            }, [data, search, typeF, statusF, elfaF, minCap, maxCap, sfusdOnly, mapBoundsFilter, currentBounds]);
+            }, [data, search, typeF, statusF, elfaF, districtF, minCap, maxCap, sfusdOnly, mapBoundsFilter, currentBounds]);
             
             const stats = useMemo(() => {
                 const cap = filtered.reduce((s, f) => s + (f.facility_capacity || 0), 0);
@@ -346,7 +356,9 @@
                             fillOpacity: isJittered ? 0.5 : 0.7
                         });
                         const addressText = f.facility_address || `ZIP ${f.facility_zip} (approximate)`;
-                        m.bindPopup(`<strong>${f.facility_name}</strong><br>License #: ${f.facility_number}<br>Type: ${f.facility_type}<br>${addressText}<br>Capacity: ${f.facility_capacity}<br>Status: ${f.facility_status}${f.sfusd_site === 'Yes' ? '<br><strong style="color:#673AB7">SFUSD: ' + f.sfusd_school_name + '</strong>' : ''}${isJittered ? '<br><em style="color:#FF8C00">⚠️ Location approximate</em>' : ''}`);
+                        const districtText = f.supervisor_district ? `<br>District ${f.supervisor_district} - ${f.supervisor_name}` : '';
+                        const neighborhoodText = f.neighborhood ? `<br>Neighborhood: ${f.neighborhood}` : '';
+                        m.bindPopup(`<strong>${f.facility_name}</strong><br>License #: ${f.facility_number}<br>Type: ${f.facility_type}<br>${addressText}${districtText}${neighborhoodText}<br>Capacity: ${f.facility_capacity}<br>Status: ${f.facility_status}${f.sfusd_site === 'Yes' ? '<br><strong style="color:#673AB7">SFUSD: ' + f.sfusd_school_name + '</strong>' : ''}${isJittered ? '<br><em style="color:#FF8C00">⚠️ Location approximate</em>' : ''}`);
                         m.addTo(markerLayer.current);
                         markerCount++;
                     });
@@ -386,12 +398,13 @@
                 setTypeF([]);
                 setStatusF([]);
                 setElfaF([]);
+                setDistrictF([]);
                 setMinCap('');
                 setMaxCap('');
                 setSfusdOnly(false);
             };
 
-            const activeFilterCount = typeF.length + statusF.length + elfaF.length +
+            const activeFilterCount = typeF.length + statusF.length + elfaF.length + districtF.length +
                                      (minCap ? 1 : 0) + (maxCap ? 1 : 0) + (sfusdOnly ? 1 : 0) + (search ? 1 : 0);
             
             if (!data.length) return <div className="loading"><div className="spinner"></div><div>Loading data...</div></div>;
@@ -429,6 +442,10 @@
                                         {typeF.map(t => <div key={t} className="filter-chip">{t} <span className="filter-chip-close" onClick={() => toggle(typeF, setTypeF, t)}>×</span></div>)}
                                         {statusF.map(s => <div key={s} className="filter-chip">{s} <span className="filter-chip-close" onClick={() => toggle(statusF, setStatusF, s)}>×</span></div>)}
                                         {elfaF.map(e => <div key={e} className="filter-chip">ELFA: {e} <span className="filter-chip-close" onClick={() => toggle(elfaF, setElfaF, e)}>×</span></div>)}
+                                        {districtF.map(d => {
+                                            const dist = districts.find(x => x.number === d);
+                                            return <div key={d} className="filter-chip">District {d} - {dist?.name} <span className="filter-chip-close" onClick={() => toggle(districtF, setDistrictF, d)}>×</span></div>;
+                                        })}
                                         {minCap && <div className="filter-chip">Min: {minCap} <span className="filter-chip-close" onClick={() => setMinCap('')}>×</span></div>}
                                         {maxCap && <div className="filter-chip">Max: {maxCap} <span className="filter-chip-close" onClick={() => setMaxCap('')}>×</span></div>}
                                         {sfusdOnly && <div className="filter-chip">SFUSD Only <span className="filter-chip-close" onClick={() => setSfusdOnly(false)}>×</span></div>}
@@ -437,6 +454,24 @@
                                 </div>
                             )}
                             
+                            <div className="filter-section">
+                                <div className="filter-header" onClick={() => setOpen(open === 'district' ? '' : 'district')}>
+                                    <span className="filter-title">Supervisor District</span>
+                                    <span className={`filter-arrow ${open === 'district' ? 'open' : ''}`}>▼</span>
+                                </div>
+                                <div className={`filter-content ${open === 'district' ? 'open' : ''}`}>
+                                    <div className="filter-body">
+                                        {districts.map(dist => (
+                                            <div key={dist.number} className="filter-option">
+                                                <input type="checkbox" id={'district' + dist.number} checked={districtF.includes(dist.number)} onChange={() => toggle(districtF, setDistrictF, dist.number)} />
+                                                <label htmlFor={'district' + dist.number}>District {dist.number} - {dist.name}</label>
+                                                <span className="filter-count">{data.filter(f => f.supervisor_district === dist.number).length}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
                             {[
                                 {id: 'type', title: 'Facility Type', items: types, filter: typeF, setFilter: setTypeF},
                                 {id: 'status', title: 'License Status', items: statuses, filter: statusF, setFilter: setStatusF},
@@ -560,6 +595,8 @@
                                     <div><strong>License #:</strong> {f.facility_number}</div>
                                     <div><strong>Type:</strong> {f.facility_type}</div>
                                     <div>{f.facility_address || `ZIP ${f.facility_zip} (address unavailable)`}, {f.facility_city} {f.facility_zip}</div>
+                                    {f.supervisor_district && <div style={{marginTop: '4px'}}><strong>📍 District {f.supervisor_district}:</strong> {f.supervisor_name}</div>}
+                                    {f.neighborhood && <div style={{color: '#666', fontSize: '12px'}}>Neighborhood: {f.neighborhood}</div>}
                                     {f.sfusd_site === 'Yes' && f.sfusd_school_name && <div style={{color: '#673AB7', marginTop: '4px'}}>🏫 {f.sfusd_school_name}</div>}
                                 </div>
                                 <div className="facility-capacity">Capacity: {f.facility_capacity || 'N/A'}</div>
