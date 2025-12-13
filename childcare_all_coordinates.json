@@ -3143,22 +3143,22 @@
     "elfa_contracted": "Yes",
     "sfusd_site": "Yes",
     "sfusd_school_name": "E.R. Taylor Elementary School",
-    "latitude": 37.722542,
-    "longitude": -122.418921,
+    "latitude": 37.72759389483371,
+    "longitude": -122.4072457020471,
     "eas_baseid": null,
     "parcel_number": null,
     "match_type": "none",
     "match_score": null,
     "matched_eas_address": null,
     "tags": {
-      "address_source": "zip_code_approximate",
-      "coordinates_jittered": true,
-      "geocoding_method": "zip_centroid_with_jitter"
+      "address_source": "manual_correction",
+      "coordinates_jittered": false,
+      "geocoding_method": "manual"
     },
-    "supervisor_district": null,
-    "district_name": null,
-    "supervisor_name": null,
-    "neighborhood": null
+    "supervisor_district": "9",
+    "district_name": "SUPERVISORIAL DISTRICT 9",
+    "supervisor_name": "Jackie Fielder",
+    "neighborhood": "Bayview"
   },
   {
     "facility_number": 380505931.0,
@@ -11268,22 +11268,22 @@
     "elfa_contracted": "Yes",
     "sfusd_site": "No",
     "sfusd_school_name": "",
-    "latitude": 37.717617,
-    "longitude": -122.379202,
+    "latitude": 37.8258966875704,
+    "longitude": -122.37322623068411,
     "eas_baseid": null,
     "parcel_number": null,
     "match_type": "none",
     "match_score": null,
     "matched_eas_address": null,
     "tags": {
-      "address_source": "zip_code_approximate",
-      "coordinates_jittered": true,
-      "geocoding_method": "zip_centroid_with_jitter"
+      "address_source": "manual_correction",
+      "coordinates_jittered": false,
+      "geocoding_method": "manual"
     },
-    "supervisor_district": null,
-    "district_name": null,
-    "supervisor_name": null,
-    "neighborhood": null
+    "supervisor_district": "6",
+    "district_name": "SUPERVISORIAL DISTRICT 6",
+    "supervisor_name": "Matt Dorsey",
+    "neighborhood": "Treasure Island"
   },
   {
     "facility_number": 384002012.0,
@@ -11297,22 +11297,22 @@
     "elfa_contracted": "Yes",
     "sfusd_site": "No",
     "sfusd_school_name": "",
-    "latitude": 37.720383,
-    "longitude": -122.376127,
+    "latitude": 37.8258966875704,
+    "longitude": -122.37322623068411,
     "eas_baseid": null,
     "parcel_number": null,
     "match_type": "none",
     "match_score": null,
     "matched_eas_address": null,
     "tags": {
-      "address_source": "zip_code_approximate",
-      "coordinates_jittered": true,
-      "geocoding_method": "zip_centroid_with_jitter"
+      "address_source": "manual_correction",
+      "coordinates_jittered": false,
+      "geocoding_method": "manual"
     },
-    "supervisor_district": null,
-    "district_name": null,
-    "supervisor_name": null,
-    "neighborhood": null
+    "supervisor_district": "6",
+    "district_name": "SUPERVISORIAL DISTRICT 6",
+    "supervisor_name": "Matt Dorsey",
+    "neighborhood": "Treasure Island"
   },
   {
     "facility_number": 384002022,
@@ -21955,22 +21955,22 @@
     "elfa_contracted": "No",
     "sfusd_site": "No",
     "sfusd_school_name": "",
-    "latitude": 37.801315,
-    "longitude": -122.464282,
+    "latitude": 37.79945816281166,
+    "longitude": -122.45622541923416,
     "eas_baseid": null,
     "parcel_number": null,
     "match_type": "none",
     "match_score": null,
     "matched_eas_address": null,
     "tags": {
-      "address_source": "zip_code_approximate",
-      "coordinates_jittered": true,
-      "geocoding_method": "zip_centroid_with_jitter"
+      "address_source": "manual_correction",
+      "coordinates_jittered": false,
+      "geocoding_method": "manual"
     },
-    "supervisor_district": null,
-    "district_name": null,
-    "supervisor_name": null,
-    "neighborhood": null
+    "supervisor_district": "2",
+    "district_name": "SUPERVISORIAL DISTRICT 2",
+    "supervisor_name": "Stephen Sherrill",
+    "neighborhood": "Presidio"
   },
   {
     "facility_number": 384004234.0,
