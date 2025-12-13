@@ -498,29 +498,6 @@
                                 </div>
                             </div>
 
-                            <div className="filter-section">
-                                <div className="filter-header" onClick={() => setOpen(open === 'headstart' ? '' : 'headstart')}>
-                                    <span className="filter-title">Head Start Program</span>
-                                    <span className={`filter-arrow ${open === 'headstart' ? 'open' : ''}`}>▼</span>
-                                </div>
-                                <div className={`filter-content ${open === 'headstart' ? 'open' : ''}`}>
-                                    <div className="filter-body">
-                                        {headStartPrograms.map(prog => (
-                                            <div key={prog} className="filter-option">
-                                                <input type="checkbox" id={'headstart' + prog} checked={headStartF.includes(prog)} onChange={() => toggle(headStartF, setHeadStartF, prog)} />
-                                                <label htmlFor={'headstart' + prog}>{prog}</label>
-                                                <span className="filter-count">{data.filter(f => f.head_start_program === prog).length}</span>
-                                            </div>
-                                        ))}
-                                        {headStartPrograms.length === 0 && (
-                                            <div style={{padding: '8px 0', fontSize: '12px', color: '#999'}}>
-                                                No Head Start programs found
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-
                             {[
                                 {id: 'type', title: 'Facility Type', items: types, filter: typeF, setFilter: setTypeF},
                                 {id: 'status', title: 'License Status', items: statuses, filter: statusF, setFilter: setStatusF},
@@ -570,7 +547,15 @@
                                         <div className="filter-option">
                                             <input type="checkbox" id="sfusd" checked={sfusdOnly} onChange={e => setSfusdOnly(e.target.checked)} />
                                             <label htmlFor="sfusd">SFUSD Only</label>
+                                            <span className="filter-count">{data.filter(f => f.sfusd_site === 'Yes').length}</span>
                                         </div>
+                                        {headStartPrograms.map(prog => (
+                                            <div key={prog} className="filter-option">
+                                                <input type="checkbox" id={'special-' + prog} checked={headStartF.includes(prog)} onChange={() => toggle(headStartF, setHeadStartF, prog)} />
+                                                <label htmlFor={'special-' + prog}>{prog}</label>
+                                                <span className="filter-count">{data.filter(f => f.head_start_program === prog).length}</span>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             </div>
