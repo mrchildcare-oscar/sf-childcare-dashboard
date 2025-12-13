@@ -142,7 +142,8 @@
     "supervisor_district": "8",
     "district_name": "SUPERVISORIAL DISTRICT 8",
     "supervisor_name": "Rafael Mandelman",
-    "neighborhood": "Mission"
+    "neighborhood": "Mission",
+    "cspp_program": true
   },
   {
     "facility_number": 380500371.0,
@@ -1592,7 +1593,8 @@
     "supervisor_district": "5",
     "district_name": "SUPERVISORIAL DISTRICT 5",
     "supervisor_name": "Bilal Mahmood",
-    "neighborhood": "Pacific Heights"
+    "neighborhood": "Pacific Heights",
+    "cspp_program": true
   },
   {
     "facility_number": 380504783.0,
@@ -1679,7 +1681,8 @@
     "supervisor_district": "5",
     "district_name": "SUPERVISORIAL DISTRICT 5",
     "supervisor_name": "Bilal Mahmood",
-    "neighborhood": "Pacific Heights"
+    "neighborhood": "Pacific Heights",
+    "cspp_program": true
   },
   {
     "facility_number": 380504941.0,
@@ -1853,7 +1856,8 @@
     "supervisor_district": "3",
     "district_name": "SUPERVISORIAL DISTRICT 3",
     "supervisor_name": "Danny Sauter",
-    "neighborhood": "Chinatown"
+    "neighborhood": "Chinatown",
+    "cspp_program": true
   },
   {
     "facility_number": 380505039.0,
@@ -2115,7 +2119,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 9",
     "supervisor_name": "Jackie Fielder",
     "neighborhood": "Mission",
-    "head_start_program": "Mission Head Start"
+    "head_start_program": "Mission Head Start",
+    "cspp_program": true
   },
   {
     "facility_number": 380505307.0,
@@ -2696,7 +2701,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 3",
     "supervisor_name": "Danny Sauter",
     "neighborhood": "North Beach",
-    "head_start_program": "Kai Ming Head Start"
+    "head_start_program": "Kai Ming Head Start",
+    "cspp_program": true
   },
   {
     "facility_number": 380505568.0,
@@ -2813,7 +2819,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 3",
     "supervisor_name": "Danny Sauter",
     "neighborhood": "North Beach",
-    "head_start_program": "Wu Yee Children's Services"
+    "head_start_program": "Wu Yee Children's Services",
+    "cspp_program": true
   },
   {
     "facility_number": 380505725.0,
@@ -3243,7 +3250,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 5",
     "supervisor_name": "Bilal Mahmood",
     "neighborhood": "Tenderloin",
-    "head_start_program": "Wu Yee Children's Services"
+    "head_start_program": "Wu Yee Children's Services",
+    "cspp_program": true
   },
   {
     "facility_number": 380506136.0,
@@ -3817,7 +3825,8 @@
     "supervisor_district": "6",
     "district_name": "SUPERVISORIAL DISTRICT 6",
     "supervisor_name": "Matt Dorsey",
-    "neighborhood": "Hayes Valley"
+    "neighborhood": "Hayes Valley",
+    "cspp_program": true
   },
   {
     "facility_number": 380506510.0,
@@ -3846,7 +3855,8 @@
     "supervisor_district": "6",
     "district_name": "SUPERVISORIAL DISTRICT 6",
     "supervisor_name": "Matt Dorsey",
-    "neighborhood": "Hayes Valley"
+    "neighborhood": "Hayes Valley",
+    "cspp_program": true
   },
   {
     "facility_number": 380506527.0,
@@ -5313,7 +5323,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 3",
     "supervisor_name": "Danny Sauter",
     "neighborhood": "Financial District/South Beach",
-    "head_start_program": "Wu Yee Children's Services"
+    "head_start_program": "Wu Yee Children's Services",
+    "cspp_program": true
   },
   {
     "facility_number": 384000508,
@@ -5847,7 +5858,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 6",
     "supervisor_name": "Matt Dorsey",
     "neighborhood": "South of Market",
-    "head_start_program": "Mission Head Start"
+    "head_start_program": "Mission Head Start",
+    "cspp_program": true
   },
   {
     "facility_number": 384000735,
@@ -6178,7 +6190,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 3",
     "supervisor_name": "Danny Sauter",
     "neighborhood": "North Beach",
-    "head_start_program": "Wu Yee Children's Services"
+    "head_start_program": "Wu Yee Children's Services",
+    "cspp_program": true
   },
   {
     "facility_number": 384000805.0,
@@ -6486,7 +6499,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 9",
     "supervisor_name": "Jackie Fielder",
     "neighborhood": "Mission",
-    "head_start_program": "Mission Head Start"
+    "head_start_program": "Mission Head Start",
+    "cspp_program": true
   },
   {
     "facility_number": 384000888,
@@ -6626,7 +6640,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 10",
     "supervisor_name": "Shamann Walton",
     "neighborhood": "Visitacion Valley",
-    "head_start_program": "Wu Yee Children's Services"
+    "head_start_program": "Wu Yee Children's Services",
+    "cspp_program": true
   },
   {
     "facility_number": 384000921.0,
@@ -6656,7 +6671,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 10",
     "supervisor_name": "Shamann Walton",
     "neighborhood": "Visitacion Valley",
-    "head_start_program": "Wu Yee Children's Services"
+    "head_start_program": "Wu Yee Children's Services",
+    "cspp_program": true
   },
   {
     "facility_number": 384000923.0,
@@ -6911,7 +6927,8 @@
     "supervisor_district": "5",
     "district_name": "SUPERVISORIAL DISTRICT 5",
     "supervisor_name": "Bilal Mahmood",
-    "neighborhood": "Tenderloin"
+    "neighborhood": "Tenderloin",
+    "cspp_program": true
   },
   {
     "facility_number": 384000989.0,
@@ -6940,7 +6957,8 @@
     "supervisor_district": "5",
     "district_name": "SUPERVISORIAL DISTRICT 5",
     "supervisor_name": "Bilal Mahmood",
-    "neighborhood": "Tenderloin"
+    "neighborhood": "Tenderloin",
+    "cspp_program": true
   },
   {
     "facility_number": 384000990,
@@ -6999,7 +7017,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 9",
     "supervisor_name": "Jackie Fielder",
     "neighborhood": "Bernal Heights",
-    "head_start_program": "Mission Head Start"
+    "head_start_program": "Mission Head Start",
+    "cspp_program": true
   },
   {
     "facility_number": 384001019.0,
@@ -7029,7 +7048,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 1",
     "supervisor_name": "Connie Chan",
     "neighborhood": "Outer Richmond",
-    "head_start_program": "Kai Ming Head Start"
+    "head_start_program": "Kai Ming Head Start",
+    "cspp_program": true
   },
   {
     "facility_number": 384001027,
@@ -7325,7 +7345,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 6",
     "supervisor_name": "Matt Dorsey",
     "neighborhood": "Mission Bay",
-    "head_start_program": "Mission Head Start"
+    "head_start_program": "Mission Head Start",
+    "cspp_program": true
   },
   {
     "facility_number": 384001158,
@@ -7581,7 +7602,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 11",
     "supervisor_name": "Chyanne Chen",
     "neighborhood": "Excelsior",
-    "head_start_program": "Mission Head Start"
+    "head_start_program": "Mission Head Start",
+    "cspp_program": true
   },
   {
     "facility_number": 384001208,
@@ -7894,7 +7916,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 1",
     "supervisor_name": "Connie Chan",
     "neighborhood": "Outer Richmond",
-    "head_start_program": "Kai Ming Head Start"
+    "head_start_program": "Kai Ming Head Start",
+    "cspp_program": true
   },
   {
     "facility_number": 384001292.0,
@@ -8433,7 +8456,8 @@
     "supervisor_district": "6",
     "district_name": "SUPERVISORIAL DISTRICT 6",
     "supervisor_name": "Matt Dorsey",
-    "neighborhood": "South of Market"
+    "neighborhood": "South of Market",
+    "cspp_program": true
   },
   {
     "facility_number": 384001369,
@@ -8596,7 +8620,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 4",
     "supervisor_name": "Alan Wong",
     "neighborhood": "Sunset/Parkside",
-    "head_start_program": "Kai Ming Head Start"
+    "head_start_program": "Kai Ming Head Start",
+    "cspp_program": true
   },
   {
     "facility_number": 384001395.0,
@@ -8915,7 +8940,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 3",
     "supervisor_name": "Danny Sauter",
     "neighborhood": "Russian Hill",
-    "head_start_program": "Kai Ming Head Start"
+    "head_start_program": "Kai Ming Head Start",
+    "cspp_program": true
   },
   {
     "facility_number": 384001491.0,
@@ -9611,7 +9637,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 9",
     "supervisor_name": "Jackie Fielder",
     "neighborhood": "Mission",
-    "head_start_program": "Mission Head Start"
+    "head_start_program": "Mission Head Start",
+    "cspp_program": true
   },
   {
     "facility_number": 384001637,
@@ -10631,7 +10658,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 10",
     "supervisor_name": "Shamann Walton",
     "neighborhood": "Bayview Hunters Point",
-    "head_start_program": "Mission Head Start"
+    "head_start_program": "Mission Head Start",
+    "cspp_program": true
   },
   {
     "facility_number": 384001835.0,
@@ -10719,7 +10747,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 3",
     "supervisor_name": "Danny Sauter",
     "neighborhood": "Financial District/South Beach",
-    "head_start_program": "Kai Ming Head Start"
+    "head_start_program": "Kai Ming Head Start",
+    "cspp_program": true
   },
   {
     "facility_number": 384001862,
@@ -12270,7 +12299,8 @@
     "supervisor_district": "10",
     "district_name": "SUPERVISORIAL DISTRICT 10",
     "supervisor_name": "Shamann Walton",
-    "neighborhood": "Bayview Hunters Point"
+    "neighborhood": "Bayview Hunters Point",
+    "cspp_program": true
   },
   {
     "facility_number": 384002200.0,
@@ -12299,7 +12329,8 @@
     "supervisor_district": "10",
     "district_name": "SUPERVISORIAL DISTRICT 10",
     "supervisor_name": "Shamann Walton",
-    "neighborhood": "Bayview Hunters Point"
+    "neighborhood": "Bayview Hunters Point",
+    "cspp_program": true
   },
   {
     "facility_number": 384002201.0,
@@ -12328,7 +12359,8 @@
     "supervisor_district": "5",
     "district_name": "SUPERVISORIAL DISTRICT 5",
     "supervisor_name": "Bilal Mahmood",
-    "neighborhood": "Haight Ashbury"
+    "neighborhood": "Haight Ashbury",
+    "cspp_program": true
   },
   {
     "facility_number": 384002202.0,
@@ -12357,7 +12389,8 @@
     "supervisor_district": "5",
     "district_name": "SUPERVISORIAL DISTRICT 5",
     "supervisor_name": "Bilal Mahmood",
-    "neighborhood": "Hayes Valley"
+    "neighborhood": "Hayes Valley",
+    "cspp_program": true
   },
   {
     "facility_number": 384002203.0,
@@ -13308,7 +13341,8 @@
     "supervisor_district": "8",
     "district_name": "SUPERVISORIAL DISTRICT 8",
     "supervisor_name": "Rafael Mandelman",
-    "neighborhood": "Mission"
+    "neighborhood": "Mission",
+    "cspp_program": true
   },
   {
     "facility_number": 384002324,
@@ -14062,7 +14096,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 10",
     "supervisor_name": "Shamann Walton",
     "neighborhood": "Bayview Hunters Point",
-    "head_start_program": "Wu Yee Children's Services"
+    "head_start_program": "Wu Yee Children's Services",
+    "cspp_program": true
   },
   {
     "facility_number": 384002434.0,
@@ -14914,7 +14949,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 3",
     "supervisor_name": "Danny Sauter",
     "neighborhood": "Russian Hill",
-    "head_start_program": "Wu Yee Children's Services"
+    "head_start_program": "Wu Yee Children's Services",
+    "cspp_program": true
   },
   {
     "facility_number": 384002513.0,
@@ -14944,7 +14980,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 11",
     "supervisor_name": "Chyanne Chen",
     "neighborhood": "Oceanview/Merced/Ingleside",
-    "head_start_program": "Wu Yee Children's Services"
+    "head_start_program": "Wu Yee Children's Services",
+    "cspp_program": true
   },
   {
     "facility_number": 384002514.0,
@@ -15003,7 +15040,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 10",
     "supervisor_name": "Shamann Walton",
     "neighborhood": "Potrero Hill",
-    "head_start_program": "Wu Yee Children's Services"
+    "head_start_program": "Wu Yee Children's Services",
+    "cspp_program": true
   },
   {
     "facility_number": 384002516.0,
@@ -15033,7 +15071,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 10",
     "supervisor_name": "Shamann Walton",
     "neighborhood": "Bayview Hunters Point",
-    "head_start_program": "Wu Yee Children's Services"
+    "head_start_program": "Wu Yee Children's Services",
+    "cspp_program": true
   },
   {
     "facility_number": 384002524,
@@ -15115,7 +15154,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 10",
     "supervisor_name": "Shamann Walton",
     "neighborhood": "Bayview Hunters Point",
-    "head_start_program": "Wu Yee Children's Services"
+    "head_start_program": "Wu Yee Children's Services",
+    "cspp_program": true
   },
   {
     "facility_number": 384002530.0,
@@ -15145,7 +15185,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 10",
     "supervisor_name": "Shamann Walton",
     "neighborhood": "Bayview Hunters Point",
-    "head_start_program": "Wu Yee Children's Services"
+    "head_start_program": "Wu Yee Children's Services",
+    "cspp_program": true
   },
   {
     "facility_number": 384002531.0,
@@ -15175,7 +15216,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 3",
     "supervisor_name": "Danny Sauter",
     "neighborhood": "Nob Hill",
-    "head_start_program": "Wu Yee Children's Services"
+    "head_start_program": "Wu Yee Children's Services",
+    "cspp_program": true
   },
   {
     "facility_number": 384002533,
@@ -15402,7 +15444,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 3",
     "supervisor_name": "Danny Sauter",
     "neighborhood": "Nob Hill",
-    "head_start_program": "Kai Ming Head Start"
+    "head_start_program": "Kai Ming Head Start",
+    "cspp_program": true
   },
   {
     "facility_number": 384002584.0,
@@ -16762,7 +16805,8 @@
     "supervisor_district": "3",
     "district_name": "SUPERVISORIAL DISTRICT 3",
     "supervisor_name": "Danny Sauter",
-    "neighborhood": "Russian Hill"
+    "neighborhood": "Russian Hill",
+    "cspp_program": true
   },
   {
     "facility_number": 384002725.0,
@@ -16792,7 +16836,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 3",
     "supervisor_name": "Danny Sauter",
     "neighborhood": "Chinatown",
-    "head_start_program": "Kai Ming Head Start"
+    "head_start_program": "Kai Ming Head Start",
+    "cspp_program": true
   },
   {
     "facility_number": 384002726.0,
@@ -16822,7 +16867,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 3",
     "supervisor_name": "Danny Sauter",
     "neighborhood": "Chinatown",
-    "head_start_program": "Kai Ming Head Start"
+    "head_start_program": "Kai Ming Head Start",
+    "cspp_program": true
   },
   {
     "facility_number": 384002727.0,
@@ -18542,7 +18588,8 @@
     "supervisor_district": "6",
     "district_name": "SUPERVISORIAL DISTRICT 6",
     "supervisor_name": "Matt Dorsey",
-    "neighborhood": "South of Market"
+    "neighborhood": "South of Market",
+    "cspp_program": true
   },
   {
     "facility_number": 384003002,
@@ -19522,7 +19569,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 3",
     "supervisor_name": "Danny Sauter",
     "neighborhood": "Financial District/South Beach",
-    "head_start_program": "Kai Ming Head Start"
+    "head_start_program": "Kai Ming Head Start",
+    "cspp_program": true
   },
   {
     "facility_number": 384004002.0,
@@ -21417,7 +21465,8 @@
     "supervisor_district": "6",
     "district_name": "SUPERVISORIAL DISTRICT 6",
     "supervisor_name": "Matt Dorsey",
-    "neighborhood": "Financial District/South Beach"
+    "neighborhood": "Financial District/South Beach",
+    "cspp_program": true
   },
   {
     "facility_number": 384004172,
@@ -22802,7 +22851,8 @@
     "supervisor_district": "6",
     "district_name": "SUPERVISORIAL DISTRICT 6",
     "supervisor_name": "Matt Dorsey",
-    "neighborhood": "South of Market"
+    "neighborhood": "South of Market",
+    "cspp_program": true
   },
   {
     "facility_number": 384004299.0,
@@ -23810,7 +23860,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 9",
     "supervisor_name": "Jackie Fielder",
     "neighborhood": "Mission",
-    "head_start_program": "Mission Head Start"
+    "head_start_program": "Mission Head Start",
+    "cspp_program": true
   },
   {
     "facility_number": 384004393.0,
@@ -23840,7 +23891,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 6",
     "supervisor_name": "Matt Dorsey",
     "neighborhood": "South of Market",
-    "head_start_program": "Mission Head Start"
+    "head_start_program": "Mission Head Start",
+    "cspp_program": true
   },
   {
     "facility_number": 384004402.0,
@@ -23870,7 +23922,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 6",
     "supervisor_name": "Matt Dorsey",
     "neighborhood": "Mission Bay",
-    "head_start_program": "Kai Ming Head Start"
+    "head_start_program": "Kai Ming Head Start",
+    "cspp_program": true
   },
   {
     "facility_number": 384004403.0,
@@ -23900,7 +23953,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 6",
     "supervisor_name": "Matt Dorsey",
     "neighborhood": "Mission Bay",
-    "head_start_program": "Kai Ming Head Start"
+    "head_start_program": "Kai Ming Head Start",
+    "cspp_program": true
   },
   {
     "facility_number": 384004405.0,
@@ -23958,7 +24012,8 @@
     "supervisor_district": "10",
     "district_name": "SUPERVISORIAL DISTRICT 10",
     "supervisor_name": "Shamann Walton",
-    "neighborhood": "Bayview Hunters Point"
+    "neighborhood": "Bayview Hunters Point",
+    "cspp_program": true
   },
   {
     "facility_number": 384004407,
@@ -24016,7 +24071,8 @@
     "supervisor_district": "6",
     "district_name": "SUPERVISORIAL DISTRICT 6",
     "supervisor_name": "Matt Dorsey",
-    "neighborhood": "South of Market"
+    "neighborhood": "South of Market",
+    "cspp_program": true
   },
   {
     "facility_number": 384004410,
@@ -24926,7 +24982,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 10",
     "supervisor_name": "Shamann Walton",
     "neighborhood": "Bayview Hunters Point",
-    "head_start_program": "Wu Yee Children's Services"
+    "head_start_program": "Wu Yee Children's Services",
+    "cspp_program": true
   },
   {
     "facility_number": 384004498.0,
@@ -24955,7 +25012,8 @@
     "supervisor_district": "6",
     "district_name": "SUPERVISORIAL DISTRICT 6",
     "supervisor_name": "Matt Dorsey",
-    "neighborhood": "Financial District/South Beach"
+    "neighborhood": "Financial District/South Beach",
+    "cspp_program": true
   },
   {
     "facility_number": 384004500,
@@ -25199,7 +25257,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 10",
     "supervisor_name": "Shamann Walton",
     "neighborhood": "Bayview Hunters Point",
-    "head_start_program": "Wu Yee Children's Services"
+    "head_start_program": "Wu Yee Children's Services",
+    "cspp_program": true
   },
   {
     "facility_number": 384004524,
@@ -26711,7 +26770,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 10",
     "supervisor_name": "Shamann Walton",
     "neighborhood": "Bayview Hunters Point",
-    "head_start_program": "Wu Yee Children's Services"
+    "head_start_program": "Wu Yee Children's Services",
+    "cspp_program": true
   },
   {
     "facility_number": 384004668.0,
@@ -26741,7 +26801,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 10",
     "supervisor_name": "Shamann Walton",
     "neighborhood": "Bayview Hunters Point",
-    "head_start_program": "Wu Yee Children's Services"
+    "head_start_program": "Wu Yee Children's Services",
+    "cspp_program": true
   },
   {
     "facility_number": 384004669.0,
@@ -26938,7 +26999,8 @@
     "supervisor_district": "9",
     "district_name": "SUPERVISORIAL DISTRICT 9",
     "supervisor_name": "Jackie Fielder",
-    "neighborhood": "Bernal Heights"
+    "neighborhood": "Bernal Heights",
+    "cspp_program": true
   },
   {
     "facility_number": 384004679,
@@ -27529,7 +27591,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 3",
     "supervisor_name": "Danny Sauter",
     "neighborhood": "Russian Hill",
-    "head_start_program": "Kai Ming Head Start"
+    "head_start_program": "Kai Ming Head Start",
+    "cspp_program": true
   },
   {
     "facility_number": 384004716.0,
@@ -27883,7 +27946,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 11",
     "supervisor_name": "Chyanne Chen",
     "neighborhood": "Outer Mission",
-    "head_start_program": "Wu Yee Children's Services"
+    "head_start_program": "Wu Yee Children's Services",
+    "cspp_program": true
   },
   {
     "facility_number": 384004744.0,
@@ -27913,7 +27977,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 11",
     "supervisor_name": "Chyanne Chen",
     "neighborhood": "Outer Mission",
-    "head_start_program": "Wu Yee Children's Services"
+    "head_start_program": "Wu Yee Children's Services",
+    "cspp_program": true
   },
   {
     "facility_number": 384004747.0,
@@ -29141,7 +29206,8 @@
     "supervisor_district": "6",
     "district_name": "SUPERVISORIAL DISTRICT 6",
     "supervisor_name": "Matt Dorsey",
-    "neighborhood": "Hayes Valley"
+    "neighborhood": "Hayes Valley",
+    "cspp_program": true
   },
   {
     "facility_number": 384004854.0,
@@ -29808,7 +29874,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 10",
     "supervisor_name": "Shamann Walton",
     "neighborhood": "Visitacion Valley",
-    "head_start_program": "Wu Yee Children's Services"
+    "head_start_program": "Wu Yee Children's Services",
+    "cspp_program": true
   },
   {
     "facility_number": 384004902,
@@ -29867,7 +29934,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 6",
     "supervisor_name": "Matt Dorsey",
     "neighborhood": "Mission Bay",
-    "head_start_program": "Mission Head Start"
+    "head_start_program": "Mission Head Start",
+    "cspp_program": true
   },
   {
     "facility_number": 384004905,
@@ -30597,7 +30665,8 @@
     "supervisor_district": "6",
     "district_name": "SUPERVISORIAL DISTRICT 6",
     "supervisor_name": "Matt Dorsey",
-    "neighborhood": "South of Market"
+    "neighborhood": "South of Market",
+    "cspp_program": true
   },
   {
     "facility_number": 384004973,
@@ -31299,7 +31368,8 @@
     "district_name": "SUPERVISORIAL DISTRICT 9",
     "supervisor_name": "Jackie Fielder",
     "neighborhood": "Mission",
-    "head_start_program": "Mission Head Start"
+    "head_start_program": "Mission Head Start",
+    "cspp_program": true
   },
   {
     "facility_number": 384005041,
