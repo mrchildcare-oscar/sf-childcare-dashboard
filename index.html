@@ -110,6 +110,7 @@
         .badge-sfusd { background: #d1c4e9; color: #4a148c; }
         .badge-headstart { background: #fff3e0; color: #e65100; }
         .badge-cspp { background: #e8f5e9; color: #2e7d32; }
+        .badge-cctr { background: #c8e6c9; color: #2e7d32; }
         .facility-details { font-size: 13px; color: #666; line-height: 1.6; }
         .facility-capacity { display: inline-block; margin-top: 8px; padding: 4px 10px; background: #f0f0f0; border-radius: 6px; font-size: 12px; font-weight: 600; }
         
@@ -171,6 +172,7 @@
             const [typeF, setTypeF] = useState([]);
             const [statusF, setStatusF] = useState([]);
             const [elfaF, setElfaF] = useState([]);
+            const [cctrF, setCctrF] = useState([]);
             const [minCap, setMinCap] = useState('');
             const [maxCap, setMaxCap] = useState('');
             const [sfusdOnly, setSfusdOnly] = useState(false);
@@ -211,6 +213,10 @@
                 return unique.sort((a, b) => parseInt(a.number) - parseInt(b.number));
             }, [data]);
 
+            const cctrContractors = useMemo(() => {
+                return [...new Set(data.filter(f => f.cctr_contractor).map(f => f.cctr_contractor))].sort();
+            }, [data]);
+
             const filtered = useMemo(() => {
                 let f = [...data];
                 if (search) {
@@ -235,6 +241,7 @@
                 if (sfusdOnly) f = f.filter(x => x.sfusd_site === 'Yes');
                 if (headStartOnly) f = f.filter(x => x.head_start_program);
                 if (csppOnly) f = f.filter(x => x.cspp_program);
+                if (cctrF.length) f = f.filter(x => x.cctr_contractor && cctrF.includes(x.cctr_contractor));
 
                 // Filter by map bounds if enabled
                 if (mapBoundsFilter && currentBounds) {
@@ -245,18 +252,20 @@
                 }
 
                 return f;
-            }, [data, search, typeF, statusF, elfaF, districtF, minCap, maxCap, sfusdOnly, headStartOnly, csppOnly, mapBoundsFilter, currentBounds]);
+            }, [data, search, typeF, statusF, elfaF, districtF, minCap, maxCap, sfusdOnly, headStartOnly, csppOnly, cctrF, mapBoundsFilter, currentBounds]);
             
             const stats = useMemo(() => {
                 const cap = filtered.reduce((s, f) => s + (f.facility_capacity || 0), 0);
                 const lic = filtered.filter(f => f.facility_status === 'LICENSED').length;
                 const sfu = filtered.filter(f => f.sfusd_site === 'Yes').length;
+                const cctr = filtered.filter(f => f.cctr_contractor).length;
                 return {
                     total: filtered.length,
                     cap: cap,
                     lic: lic,
                     licPct: filtered.length > 0 ? Math.round((lic / filtered.length) * 100) : 0,
-                    sfu: sfu
+                    sfu: sfu,
+                    cctr: cctr
                 };
             }, [filtered]);
             
@@ -373,7 +382,8 @@
                         const neighborhoodText = f.neighborhood ? `<br>Neighborhood: ${f.neighborhood}` : '';
                         const headStartText = f.head_start_program ? `<br><strong style="color:#e65100">⭐ ${f.head_start_program}</strong>` : '';
                         const csppText = f.cspp_program ? `<br><strong style="color:#2e7d32">✓ CSPP Participant</strong>` : '';
-                        m.bindPopup(`<strong>${f.facility_name}</strong><br>License #: ${f.facility_number}<br>Type: ${f.facility_type}<br>${addressText}${districtText}${neighborhoodText}${headStartText}${csppText}<br>Capacity: ${f.facility_capacity}<br>Status: ${f.facility_status}${f.sfusd_site === 'Yes' ? '<br><strong style="color:#673AB7">SFUSD: ' + f.sfusd_school_name + '</strong>' : ''}${isJittered ? '<br><em style="color:#FF8C00">⚠️ Location approximate</em>' : ''}`);
+                        const cctrText = f.cctr_contractor ? `<br><strong style="color:#2e7d32">CCTR Contractor: ${f.cctr_contractor}</strong>` : '';
+                        m.bindPopup(`<strong>${f.facility_name}</strong><br>License #: ${f.facility_number}<br>Type: ${f.facility_type}<br>${addressText}${districtText}${neighborhoodText}${headStartText}${csppText}${cctrText}<br>Capacity: ${f.facility_capacity}<br>Status: ${f.facility_status}${f.sfusd_site === 'Yes' ? '<br><strong style="color:#673AB7">SFUSD: ' + f.sfusd_school_name + '</strong>' : ''}${isJittered ? '<br><em style="color:#FF8C00">⚠️ Location approximate</em>' : ''}`);
                         m.addTo(markerLayer.current);
                         markerCount++;
                     });
@@ -419,28 +429,30 @@
                 setSfusdOnly(false);
                 setHeadStartOnly(false);
                 setCsppOnly(false);
+                setCctrF([]);
             };
 
             const activeFilterCount = typeF.length + statusF.length + elfaF.length + districtF.length +
-                                     (minCap ? 1 : 0) + (maxCap ? 1 : 0) + (sfusdOnly ? 1 : 0) + (headStartOnly ? 1 : 0) + (csppOnly ? 1 : 0) + (search ? 1 : 0);
+                                     (minCap ? 1 : 0) + (maxCap ? 1 : 0) + (sfusdOnly ? 1 : 0) + (headStartOnly ? 1 : 0) + (csppOnly ? 1 : 0) + cctrF.length + (search ? 1 : 0);
             
             if (!data.length) return <div className="loading"><div className="spinner"></div><div>Loading data...</div></div>;
             
             return <div>
                 <div className="header">
-                    <div className="header-content">
-                        <div>
-                            <h1>SF Child Care Dashboard</h1>
-                            <p>Licensed Centers & Large FCCs - All facilities mapped (some with approximate ZIP-based locations)</p>
+                        <div className="header-content">
+                            <div>
+                                <h1>SF Child Care Dashboard</h1>
+                                <p>Licensed Centers & Large FCCs - All facilities mapped (some with approximate ZIP-based locations)</p>
+                            </div>
+                            <div className="header-stats">
+                                <div className="stat-pill"><div className="stat-value">{stats.total.toLocaleString()}</div><div className="stat-label">Facilities</div></div>
+                                <div className="stat-pill"><div className="stat-value">{stats.cap.toLocaleString()}</div><div className="stat-label">Capacity</div></div>
+                                <div className="stat-pill"><div className="stat-value">{stats.licPct}%</div><div className="stat-label">Licensed</div></div>
+                                <div className="stat-pill"><div className="stat-value">{stats.sfu}</div><div className="stat-label">SFUSD</div></div>
+                                <div className="stat-pill"><div className="stat-value">{stats.cctr}</div><div className="stat-label">CCTR</div></div>
+                                <div className="help-icon" onClick={() => setModal(true)}>?</div>
+                            </div>
                         </div>
-                        <div className="header-stats">
-                            <div className="stat-pill"><div className="stat-value">{stats.total.toLocaleString()}</div><div className="stat-label">Facilities</div></div>
-                            <div className="stat-pill"><div className="stat-value">{stats.cap.toLocaleString()}</div><div className="stat-label">Capacity</div></div>
-                            <div className="stat-pill"><div className="stat-value">{stats.licPct}%</div><div className="stat-label">Licensed</div></div>
-                            <div className="stat-pill"><div className="stat-value">{stats.sfu}</div><div className="stat-label">SFUSD</div></div>
-                            <div className="help-icon" onClick={() => setModal(true)}>?</div>
-                        </div>
-                    </div>
                 </div>
                 
                 <div className="container">
@@ -471,6 +483,7 @@
                                         {sfusdOnly && <div className="filter-chip">SFUSD Only <span className="filter-chip-close" onClick={() => setSfusdOnly(false)}>×</span></div>}
                                         {headStartOnly && <div className="filter-chip">Head Start <span className="filter-chip-close" onClick={() => setHeadStartOnly(false)}>×</span></div>}
                                         {csppOnly && <div className="filter-chip">CSPP <span className="filter-chip-close" onClick={() => setCsppOnly(false)}>×</span></div>}
+                                        {cctrF.map(c => <div key={c} className="filter-chip">CCTR: {c} <span className="filter-chip-close" onClick={() => toggle(cctrF, setCctrF, c)}>×</span></div>)}
                                         <button className="clear-all-btn" onClick={clearAllFilters}>Clear All</button>
                                     </div>
                                 </div>
@@ -566,6 +579,24 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <div className="filter-section">
+                                <div className="filter-header" onClick={() => setOpen(open === 'cctr' ? '' : 'cctr')}>
+                                    <span className="filter-title">CCTR Contractor</span>
+                                    <span className={`filter-arrow ${open === 'cctr' ? 'open' : ''}`}>▼</span>
+                                </div>
+                                <div className={`filter-content ${open === 'cctr' ? 'open' : ''}`}>
+                                    <div className="filter-body">
+                                        {cctrContractors.map(c => (
+                                            <div key={c} className="filter-option">
+                                                <input type="checkbox" id={`cctr-${c}`} checked={cctrF.includes(c)} onChange={() => toggle(cctrF, setCctrF, c)} />
+                                                <label htmlFor={`cctr-${c}`}>{c}</label>
+                                                <span className="filter-count">{data.filter(f => f.cctr_contractor === c).length}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         
                         <div className="card">
@@ -631,6 +662,7 @@
                                         {f.sfusd_site === 'Yes' && <span className="badge badge-sfusd">SFUSD</span>}
                                         {f.head_start_program && <span className="badge badge-headstart">HEAD START</span>}
                                         {f.cspp_program && <span className="badge badge-cspp">CSPP</span>}
+                                        {f.cctr_contractor && <span className="badge badge-cctr">CCTR</span>}
                                         {f.tags?.address_source === 'zip_code_approximate' && <span className="badge" style={{background: '#fff3cd', color: '#856404'}}>📍 ZIP</span>}
                                     </div>
                                 </div>
@@ -640,6 +672,7 @@
                                     <div>{f.facility_address || `ZIP ${f.facility_zip} (address unavailable)`}, {f.facility_city} {f.facility_zip}</div>
                                     {f.supervisor_district && <div style={{marginTop: '4px'}}><strong>📍 District {f.supervisor_district}:</strong> {f.supervisor_name}</div>}
                                     {f.neighborhood && <div style={{color: '#666', fontSize: '12px'}}>Neighborhood: {f.neighborhood}</div>}
+                                    {f.cctr_contractor && <div style={{color: '#2e7d32', marginTop: '4px'}}><strong>CCTR Contractor:</strong> {f.cctr_contractor}</div>}
                                     {f.sfusd_site === 'Yes' && f.sfusd_school_name && <div style={{color: '#673AB7', marginTop: '4px'}}>🏫 {f.sfusd_school_name}</div>}
                                     {f.head_start_program && <div style={{color: '#e65100', marginTop: '4px', fontWeight: '600'}}>⭐ {f.head_start_program}</div>}
                                 </div>
@@ -703,6 +736,11 @@
                                 <p><strong>Programs Included:</strong> Chinatown Community, Compass Family Services, FACES SF, Holy Family Day Home, Kai Ming, Mission Child Care Consortium, Nihonmachi Little Friends, South of Market Child Care, and Wu Yee Children's Services.</p>
                                 <p><strong>Overlap with Head Start:</strong> 46 facilities participate in both federal Head Start and state CSPP programs, providing comprehensive early childhood education funding.</p>
                                 <p>CSPP facilities are tagged with a green <span style={{background: '#e8f5e9', color: '#2e7d32', padding: '2px 6px', borderRadius: '8px', fontSize: '10px', fontWeight: '600'}}>CSPP</span> badge and can be filtered using the "CSPP" checkbox in Special filters.</p>
+                            </div>
+                            <div className="modal-section">
+                                <h3>🌿 CCTR (California Child Care & Development Services)</h3>
+                                <p>Facilities contracted through the CCTR program are tagged with a green <span style={{background: '#c8e6c9', color: '#2e7d32', padding: '2px 6px', borderRadius: '8px', fontSize: '10px', fontWeight: '600'}}>CCTR</span> badge and can be filtered by contractor.</p>
+                                <p><strong>FY24-25 CCTR Contractors:</strong><br/>• Mission Neighborhood Centers, Inc.<br/>• South of Market Child Care Inc.<br/>• Wu Yee Children's Services</p>
                             </div>
                             <div className="modal-section">
                                 <h3>📊 Data Sources</h3>
