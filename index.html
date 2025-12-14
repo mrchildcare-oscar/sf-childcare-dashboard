@@ -111,6 +111,8 @@
         .badge-headstart { background: #fff3e0; color: #e65100; }
         .badge-cspp { background: #e8f5e9; color: #2e7d32; }
         .badge-cctr { background: #c8e6c9; color: #2e7d32; }
+        .badge-prek { background: #e1bee7; color: #6a1b9a; }
+        .badge-tk { background: #b39ddb; color: #4a148c; }
         .facility-details { font-size: 13px; color: #666; line-height: 1.6; }
         .facility-capacity { display: inline-block; margin-top: 8px; padding: 4px 10px; background: #f0f0f0; border-radius: 6px; font-size: 12px; font-weight: 600; }
         
@@ -664,6 +666,8 @@
                                         <span className={`badge ${f.facility_status === 'LICENSED' ? 'badge-licensed' : 'badge-closed'}`}>{f.facility_status}</span>
                                         {f.elfa_contracted === 'Yes' && <span className="badge badge-elfa">ELFA</span>}
                                         {f.sfusd_site === 'Yes' && <span className="badge badge-sfusd">SFUSD</span>}
+                                        {f.prek_program && <span className="badge badge-prek">PreK</span>}
+                                        {f.tk_program && <span className="badge badge-tk">TK</span>}
                                         {f.head_start_program && <span className="badge badge-headstart">HEAD START</span>}
                                         {f.cspp_program && <span className="badge badge-cspp">CSPP</span>}
                                         {f.cctr_contractor && <span className="badge badge-cctr">CCTR</span>}
