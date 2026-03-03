@@ -333,6 +333,13 @@
         }
 
 
+        /* Corridor selector */
+        .corridor-selector { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+        .corridor-btn { padding: 7px 14px; background: #f0f0f0; border: 1px solid #ddd; border-radius: 20px; font-size: 12px; cursor: pointer; }
+        .corridor-btn:hover { background: #e0e0e0; }
+        .corridor-btn.active { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-color: transparent; }
+        .corridor-dists { font-size: 10px; opacity: 0.7; }
+
         /* Responsive */
         @media (max-width: 1024px) { .grid { grid-template-columns: 1fr; } .sidebar { position: static; } .supply-demand-grid { grid-template-columns: 1fr; } }
         @media (max-width: 768px) { .header-content { flex-direction: column; align-items: flex-start; } #map { height: 400px; } .landscape-cards { grid-template-columns: 1fr 1fr; } }
@@ -384,6 +391,13 @@
             { district: 10, total_hh: 2205, le110: 1267, b110_150: 222, b150_200: 179, gt200:  536, under3: 2122, age3_4: 1206, age5: 626 },
             { district: 11, total_hh: 2384, le110: 1255, b110_150: 295, b150_200: 232, gt200:  601, under3: 2527, age3_4: 1166, age5: 912 }
         ];
+
+        const CORRIDORS = {
+            'Westside': [1, 4, 7],
+            'North/Central': [2, 3, 5, 6],
+            'South Central': [8, 9],
+            'Southeast': [10, 11]
+        };
     </script>
 
     <script type="text/babel">
@@ -553,6 +567,50 @@
                 t.under6 = t.under3 + t.age3_4 + t.age5;
                 return t;
             }, []);
+
+            // ===== Corridor analysis =====
+            const [corridor, setCorridor] = useState('Westside');
+
+            const corridorDemand = useMemo(() => {
+                const dists = CORRIDORS[corridor] || [];
+                return DEMAND_DATA.filter(d => dists.includes(d.district));
+            }, [corridor]);
+
+            const corridorDemandTotals = useMemo(() => {
+                const t = { total_hh: 0, le110: 0, b110_150: 0, b150_200: 0, gt200: 0, under3: 0, age3_4: 0, age5: 0 };
+                corridorDemand.forEach(d => { Object.keys(t).forEach(k => { t[k] += d[k]; }); });
+                t.under6 = t.under3 + t.age3_4 + t.age5;
+                return t;
+            }, [corridorDemand]);
+
+            const corridorSupplyTotals = useMemo(() => {
+                const dists = CORRIDORS[corridor] || [];
+                return {
+                    totalCap: dists.reduce((s, d) => s + (supplyByDistrict[d]?.totalCap || 0), 0),
+                    elfaCap: dists.reduce((s, d) => s + (supplyByDistrict[d]?.elfaCap || 0), 0),
+                    infantCap: dists.reduce((s, d) => s + (supplyByDistrict[d]?.infantCap || 0), 0),
+                };
+            }, [corridor, supplyByDistrict]);
+
+            const allCorridorsTotals = useMemo(() => {
+                return Object.entries(CORRIDORS).map(([name, dists]) => {
+                    const supply = {
+                        totalCap: dists.reduce((s, d) => s + (supplyByDistrict[d]?.totalCap || 0), 0),
+                        elfaCap: dists.reduce((s, d) => s + (supplyByDistrict[d]?.elfaCap || 0), 0),
+                    };
+                    const demand = { le110: 0, b110_150: 0, b150_200: 0, gt200: 0, under3: 0, age3_4: 0, age5: 0 };
+                    DEMAND_DATA.filter(d => dists.includes(d.district)).forEach(d => {
+                        Object.keys(demand).forEach(k => { demand[k] += d[k]; });
+                    });
+                    demand.under6 = demand.under3 + demand.age3_4 + demand.age5;
+                    return { name, dists, supply, demand };
+                });
+            }, [supplyByDistrict]);
+
+            const overviewChartRef = useRef(null);
+            const overviewChartInst = useRef(null);
+            const corridorChartRef = useRef(null);
+            const corridorChartInst = useRef(null);
 
             const totalPages = Math.ceil(filtered.length / perPage);
             const paged = useMemo(() => {
@@ -901,6 +959,183 @@
 
                 districtMapInst.current = m;
             }, [districtGeo, supplyByDistrict, tab]);
+
+            // ===== All-corridors overview chart =====
+            useEffect(() => {
+                if (tab !== 'landscape') return;
+                if (!overviewChartRef.current || !data.length) return;
+                if (overviewChartInst.current) overviewChartInst.current.destroy();
+
+                const labels = allCorridorsTotals.map(c => c.name);
+
+                overviewChartInst.current = new Chart(overviewChartRef.current, {
+                    type: 'bar',
+                    data: {
+                        labels,
+                        datasets: [
+                            {
+                                label: 'ELFA Contracted',
+                                data: allCorridorsTotals.map(c => c.supply.elfaCap),
+                                backgroundColor: '#7b2d8e',
+                                borderColor: '#6a2579',
+                                borderWidth: 1,
+                                stack: 'capacity'
+                            },
+                            {
+                                label: 'CA Licensed (non-ELFA)',
+                                data: allCorridorsTotals.map(c => c.supply.totalCap - c.supply.elfaCap),
+                                backgroundColor: 'rgba(66, 133, 244, 0.7)',
+                                borderColor: 'rgba(66, 133, 244, 1)',
+                                borderWidth: 1,
+                                stack: 'capacity'
+                            },
+                            {
+                                label: 'HH w/ kids <6 \u2264110% AMI',
+                                data: allCorridorsTotals.map(c => c.demand.le110),
+                                backgroundColor: '#1B6B4A',
+                                borderColor: '#155a3e',
+                                borderWidth: 1,
+                                stack: 'eligible'
+                            },
+                            {
+                                label: 'HH w/ kids <6 110\u2013150% AMI',
+                                data: allCorridorsTotals.map(c => c.demand.b110_150),
+                                backgroundColor: '#2D8F64',
+                                borderColor: '#247a54',
+                                borderWidth: 1,
+                                stack: 'eligible'
+                            },
+                            {
+                                label: 'HH w/ kids <6 150\u2013200% AMI',
+                                data: allCorridorsTotals.map(c => c.demand.b150_200),
+                                backgroundColor: '#E07B3C',
+                                borderColor: '#c96a30',
+                                borderWidth: 1,
+                                stack: 'eligible'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+                            tooltip: {
+                                callbacks: {
+                                    label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString(),
+                                    afterBody: function(items) {
+                                        const idx = items[0].dataIndex;
+                                        const di = items[0].datasetIndex;
+                                        const c = allCorridorsTotals[idx];
+                                        if (di <= 1) return 'Total licensed: ' + c.supply.totalCap.toLocaleString();
+                                        if (di >= 2) return 'Total ELFA-eligible HH: ' + (c.demand.le110 + c.demand.b110_150 + c.demand.b150_200).toLocaleString();
+                                        return '';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: { beginAtZero: true, stacked: true, ticks: { callback: v => v.toLocaleString() } },
+                            x: { stacked: true }
+                        }
+                    }
+                });
+            }, [data, supplyByDistrict, tab, allCorridorsTotals]);
+
+            // ===== Corridor comparison chart =====
+            useEffect(() => {
+                if (tab !== 'landscape') return;
+                if (!corridorChartRef.current || !data.length) return;
+                if (corridorChartInst.current) corridorChartInst.current.destroy();
+
+                const dists = CORRIDORS[corridor] || [];
+                const labels = dists.map(d => 'D' + d);
+                const elfaCapData = dists.map(d => supplyByDistrict[d]?.elfaCap || 0);
+                const nonElfaCapData = dists.map(d => {
+                    const s = supplyByDistrict[d] || {};
+                    return (s.totalCap || 0) - (s.elfaCap || 0);
+                });
+
+                corridorChartInst.current = new Chart(corridorChartRef.current, {
+                    type: 'bar',
+                    data: {
+                        labels,
+                        datasets: [
+                            {
+                                label: 'ELFA Contracted',
+                                data: elfaCapData,
+                                backgroundColor: '#7b2d8e',
+                                borderColor: '#6a2579',
+                                borderWidth: 1,
+                                stack: 'capacity'
+                            },
+                            {
+                                label: 'CA Licensed (non-ELFA)',
+                                data: nonElfaCapData,
+                                backgroundColor: 'rgba(66, 133, 244, 0.7)',
+                                borderColor: 'rgba(66, 133, 244, 1)',
+                                borderWidth: 1,
+                                stack: 'capacity'
+                            },
+                            {
+                                label: 'HH w/ kids <6 \u2264110% AMI',
+                                data: corridorDemand.map(d => d.le110),
+                                backgroundColor: '#1B6B4A',
+                                borderColor: '#155a3e',
+                                borderWidth: 1,
+                                stack: 'eligible'
+                            },
+                            {
+                                label: 'HH w/ kids <6 110\u2013150% AMI',
+                                data: corridorDemand.map(d => d.b110_150),
+                                backgroundColor: '#2D8F64',
+                                borderColor: '#247a54',
+                                borderWidth: 1,
+                                stack: 'eligible'
+                            },
+                            {
+                                label: 'HH w/ kids <6 150\u2013200% AMI',
+                                data: corridorDemand.map(d => d.b150_200),
+                                backgroundColor: '#E07B3C',
+                                borderColor: '#c96a30',
+                                borderWidth: 1,
+                                stack: 'eligible'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+                            tooltip: {
+                                callbacks: {
+                                    label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString(),
+                                    afterBody: function(items) {
+                                        const idx = items[0].dataIndex;
+                                        const di = items[0].datasetIndex;
+                                        const dist = dists[idx];
+                                        if (di <= 1) {
+                                            const s = supplyByDistrict[dist] || {};
+                                            return 'Total licensed: ' + (s.totalCap || 0).toLocaleString();
+                                        }
+                                        if (di >= 2 && di <= 4) {
+                                            const d = DEMAND_DATA.find(x => x.district === dist);
+                                            const total = d ? d.le110 + d.b110_150 + d.b150_200 : 0;
+                                            return 'Total ELFA-eligible HH: ' + total.toLocaleString();
+                                        }
+                                        return '';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: { beginAtZero: true, stacked: true, ticks: { callback: v => v.toLocaleString() } },
+                            x: { stacked: true }
+                        }
+                    }
+                });
+            }, [data, supplyByDistrict, tab, corridor]);
 
             // Invalidate map sizes when switching tabs
             useEffect(() => {
@@ -1385,6 +1620,146 @@
                         </div>
                     </div>
                     {/* ==================== END LANDSCAPE PANEL ==================== */}
+
+                    {/* ==================== CORRIDOR ANALYSIS SECTION ==================== */}
+                    <div className="landscape-panel" style={{marginTop: '20px'}}>
+                        <h2>Regional Corridor Analysis</h2>
+                        <div className="landscape-disclaimer">
+                            Districts are grouped into geographic corridors to show cross-district supply and demand. Families often cross district lines &mdash; corridor totals help assess regional capacity.
+                        </div>
+
+                        {/* All-corridors overview chart */}
+                        <h3>All Corridors &mdash; Licensed Supply vs Eligible Households</h3>
+                        <div className="landscape-chart-wrap">
+                            <div className="chart-subtitle">Side-by-side comparison of all four corridors</div>
+                            <div style={{height: '320px'}}>
+                                <canvas ref={overviewChartRef} className="landscape-chart-canvas"></canvas>
+                            </div>
+                        </div>
+
+                        {/* All-corridors summary table */}
+                        <div className="landscape-table-wrap" style={{marginBottom: '24px'}}>
+                            <table className="landscape-table">
+                                <thead>
+                                    <tr>
+                                        <th>Corridor</th>
+                                        <th>Districts</th>
+                                        <th>Licensed Capacity</th>
+                                        <th>ELFA Capacity</th>
+                                        <th>ELFA %</th>
+                                        <th>Children Under 6</th>
+                                        <th>Slots per Child</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {allCorridorsTotals.map(c => {
+                                        const elfaPct = c.supply.totalCap > 0 ? Math.round(c.supply.elfaCap / c.supply.totalCap * 100) : 0;
+                                        const spc = c.demand.under6 > 0 ? (c.supply.totalCap / c.demand.under6).toFixed(2) : '-';
+                                        return <tr key={c.name} style={{cursor: 'pointer'}} onClick={() => setCorridor(c.name)}
+                                            title={'Click to view ' + c.name + ' detail below'}>
+                                            <td>{c.name}</td>
+                                            <td style={{fontWeight: 400}}>D{c.dists.join(', D')}</td>
+                                            <td>{c.supply.totalCap.toLocaleString()}</td>
+                                            <td>{c.supply.elfaCap.toLocaleString()}</td>
+                                            <td>{elfaPct}%</td>
+                                            <td>{c.demand.under6.toLocaleString()}</td>
+                                            <td>{spc}</td>
+                                        </tr>;
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div className="landscape-footnote" style={{marginBottom: '28px'}}>Click a corridor row above to jump to its detail below.</div>
+
+                        <h3 style={{marginTop: '32px', paddingTop: '24px', borderTop: '2px solid #e0e0e0'}}>Corridor Detail</h3>
+
+                        {/* Corridor selector buttons */}
+                        <div className="corridor-selector">
+                            {Object.entries(CORRIDORS).map(([name, dists]) => (
+                                <button key={name} className={`corridor-btn ${corridor === name ? 'active' : ''}`}
+                                    onClick={() => setCorridor(name)}>
+                                    {name} <span className="corridor-dists">(D{dists.join(', D')})</span>
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Summary cards for selected corridor */}
+                        <div className="landscape-cards">
+                            <div className="landscape-card">
+                                <div className="lc-value">{corridorSupplyTotals.totalCap.toLocaleString()}</div>
+                                <div className="lc-label">Licensed Slots</div>
+                                <div className="lc-context">{corridor} corridor</div>
+                            </div>
+                            <div className="landscape-card">
+                                <div className="lc-value">{corridorSupplyTotals.elfaCap.toLocaleString()}</div>
+                                <div className="lc-label">ELFA Contracted</div>
+                                <div className="lc-context">{corridorSupplyTotals.totalCap > 0 ? Math.round(corridorSupplyTotals.elfaCap / corridorSupplyTotals.totalCap * 100) : 0}% of corridor capacity</div>
+                            </div>
+                            <div className="landscape-card">
+                                <div className="lc-value">{corridorDemandTotals.under6?.toLocaleString()}</div>
+                                <div className="lc-label">Children Under 6</div>
+                                <div className="lc-context">All incomes in corridor</div>
+                            </div>
+                            <div className="landscape-card">
+                                <div className="lc-value">{corridorDemandTotals.under6 > 0 ? (corridorSupplyTotals.totalCap / corridorDemandTotals.under6).toFixed(2) : '-'}</div>
+                                <div className="lc-label">Slots per Child</div>
+                                <div className="lc-context">Licensed slots / children under 6</div>
+                            </div>
+                        </div>
+
+                        {/* Corridor district table */}
+                        <h3>{corridor} &mdash; Licensed Supply by District</h3>
+                        <div className="landscape-table-wrap">
+                            <table className="landscape-table">
+                                <thead>
+                                    <tr>
+                                        <th>District</th>
+                                        <th>Licensed Capacity</th>
+                                        <th>ELFA Capacity</th>
+                                        <th>ELFA %</th>
+                                        <th>All Children Under 6</th>
+                                        <th>Slots per Child</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {corridorDemand.map(d => {
+                                        const supply = supplyByDistrict[d.district] || {};
+                                        const under6 = d.under3 + d.age3_4 + d.age5;
+                                        const slotsPerChild = under6 > 0 ? (supply.totalCap / under6).toFixed(2) : '-';
+                                        const elfaPct = supply.totalCap > 0 ? Math.round((supply.elfaCap || 0) / supply.totalCap * 100) : 0;
+                                        return <tr key={d.district}>
+                                            <td>District {d.district}</td>
+                                            <td>{(supply.totalCap || 0).toLocaleString()}</td>
+                                            <td>{(supply.elfaCap || 0).toLocaleString()}</td>
+                                            <td>{elfaPct}%</td>
+                                            <td>{under6.toLocaleString()}</td>
+                                            <td>{slotsPerChild}</td>
+                                        </tr>;
+                                    })}
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td>{corridor} Total</td>
+                                        <td>{corridorSupplyTotals.totalCap.toLocaleString()}</td>
+                                        <td>{corridorSupplyTotals.elfaCap.toLocaleString()}</td>
+                                        <td>{corridorSupplyTotals.totalCap > 0 ? Math.round(corridorSupplyTotals.elfaCap / corridorSupplyTotals.totalCap * 100) : 0}%</td>
+                                        <td>{corridorDemandTotals.under6?.toLocaleString()}</td>
+                                        <td>{corridorDemandTotals.under6 > 0 ? (corridorSupplyTotals.totalCap / corridorDemandTotals.under6).toFixed(2) : '-'}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+
+                        {/* Corridor comparison chart */}
+                        <h3>{corridor} &mdash; Licensed Supply vs Eligible Households</h3>
+                        <div className="landscape-chart-wrap">
+                            <div className="chart-subtitle">Stacked bars compare licensed capacity (ELFA + non-ELFA) against ELFA-eligible households by district</div>
+                            <div style={{height: '300px'}}>
+                                <canvas ref={corridorChartRef} className="landscape-chart-canvas"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    {/* ==================== END CORRIDOR ANALYSIS ==================== */}
                 </div>
 
                 </div>
