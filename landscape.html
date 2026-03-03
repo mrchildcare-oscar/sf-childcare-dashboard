@@ -244,6 +244,8 @@
             white-space: nowrap;
         }
         .landscape-table th:first-child { text-align: left; }
+        .landscape-table th[style*="cursor"] { user-select: none; }
+        .landscape-table th[style*="cursor"]:hover { background: #e8e8f0; }
         .landscape-table td {
             padding: 9px 12px;
             text-align: right;
@@ -398,6 +400,36 @@
             'South Central': [8, 9],
             'Southeast': [10, 11]
         };
+
+        const ZIP_DEMAND_DATA = [
+            { zip: '94102', total_hh: 1351, le110: 973, b110_150: 119, b150_200: 74, gt200: 186, under3: 605, age3_4: 44, age5: 85 },
+            { zip: '94103', total_hh: 1686, le110: 914, b110_150: 182, b150_200: 135, gt200: 456, under3: 571, age3_4: 301, age5: 55 },
+            { zip: '94104', total_hh: 11, le110: 7, b110_150: 1, b150_200: 1, gt200: 2, under3: 0, age3_4: 0, age5: 0 },
+            { zip: '94105', total_hh: 491, le110: 149, b110_150: 51, b150_200: 58, gt200: 233, under3: 275, age3_4: 110, age5: 62 },
+            { zip: '94107', total_hh: 2136, le110: 837, b110_150: 210, b150_200: 224, gt200: 865, under3: 1126, age3_4: 528, age5: 242 },
+            { zip: '94108', total_hh: 574, le110: 399, b110_150: 45, b150_200: 36, gt200: 94, under3: 185, age3_4: 78, age5: 9 },
+            { zip: '94109', total_hh: 1945, le110: 1078, b110_150: 212, b150_200: 171, gt200: 483, under3: 692, age3_4: 520, age5: 163 },
+            { zip: '94110', total_hh: 5503, le110: 2415, b110_150: 627, b150_200: 584, gt200: 1877, under3: 1971, age3_4: 1099, age5: 515 },
+            { zip: '94111', total_hh: 374, le110: 174, b110_150: 31, b150_200: 36, gt200: 133, under3: 52, age3_4: 45, age5: 64 },
+            { zip: '94112', total_hh: 6264, le110: 3287, b110_150: 780, b150_200: 614, gt200: 1583, under3: 2548, age3_4: 1183, age5: 940 },
+            { zip: '94114', total_hh: 2303, le110: 804, b110_150: 232, b150_200: 258, gt200: 1010, under3: 886, age3_4: 363, age5: 155 },
+            { zip: '94115', total_hh: 1794, le110: 824, b110_150: 177, b150_200: 184, gt200: 609, under3: 817, age3_4: 439, age5: 190 },
+            { zip: '94116', total_hh: 3874, le110: 1707, b110_150: 553, b150_200: 424, gt200: 1190, under3: 1158, age3_4: 856, age5: 529 },
+            { zip: '94117', total_hh: 2020, le110: 801, b110_150: 230, b150_200: 200, gt200: 789, under3: 933, age3_4: 585, age5: 251 },
+            { zip: '94118', total_hh: 3255, le110: 1371, b110_150: 388, b150_200: 356, gt200: 1140, under3: 925, age3_4: 756, age5: 159 },
+            { zip: '94121', total_hh: 3630, le110: 1828, b110_150: 441, b150_200: 354, gt200: 1007, under3: 1144, age3_4: 557, age5: 274 },
+            { zip: '94122', total_hh: 4408, le110: 2118, b110_150: 521, b150_200: 448, gt200: 1322, under3: 1407, age3_4: 726, age5: 413 },
+            { zip: '94123', total_hh: 1735, le110: 494, b110_150: 197, b150_200: 222, gt200: 821, under3: 968, age3_4: 633, age5: 151 },
+            { zip: '94124', total_hh: 3749, le110: 2507, b110_150: 337, b150_200: 254, gt200: 652, under3: 1058, age3_4: 653, age5: 317 },
+            { zip: '94127', total_hh: 2203, le110: 783, b110_150: 194, b150_200: 261, gt200: 965, under3: 728, age3_4: 339, age5: 108 },
+            { zip: '94129', total_hh: 528, le110: 149, b110_150: 69, b150_200: 70, gt200: 240, under3: 313, age3_4: 140, age5: 67 },
+            { zip: '94130', total_hh: 136, le110: 85, b110_150: 9, b150_200: 10, gt200: 32, under3: 28, age3_4: 58, age5: 20 },
+            { zip: '94131', total_hh: 2575, le110: 939, b110_150: 261, b150_200: 300, gt200: 1074, under3: 993, age3_4: 655, age5: 229 },
+            { zip: '94132', total_hh: 1973, le110: 1123, b110_150: 243, b150_200: 180, gt200: 427, under3: 482, age3_4: 166, age5: 143 },
+            { zip: '94133', total_hh: 1229, le110: 767, b110_150: 110, b150_200: 85, gt200: 267, under3: 302, age3_4: 392, age5: 45 },
+            { zip: '94134', total_hh: 2977, le110: 1746, b110_150: 383, b150_200: 246, gt200: 602, under3: 1015, age3_4: 528, age5: 381 },
+            { zip: '94158', total_hh: 986, le110: 367, b110_150: 101, b150_200: 106, gt200: 412, under3: 581, age3_4: 626, age5: 40 }
+        ];
     </script>
 
     <script type="text/babel">
@@ -606,6 +638,86 @@
                     return { name, dists, supply, demand };
                 });
             }, [supplyByDistrict]);
+
+            // ===== ZIP code analysis =====
+            const [zipSortCol, setZipSortCol] = useState('zip');
+            const [zipSortAsc, setZipSortAsc] = useState(true);
+            const handleZipSort = (col) => {
+                if (zipSortCol === col) { setZipSortAsc(!zipSortAsc); }
+                else { setZipSortCol(col); setZipSortAsc(col === 'zip'); }
+            };
+            const zipSortArrow = (col) => zipSortCol === col ? (zipSortAsc ? ' \u25B2' : ' \u25BC') : '';
+
+            const supplyByZip = useMemo(() => {
+                const licensed = data.filter(f => f.facility_status === 'LICENSED');
+                const result = {};
+                ZIP_DEMAND_DATA.forEach(z => {
+                    const inZip = licensed.filter(f => String(f.facility_zip) === z.zip);
+                    // Count facilities per district within this ZIP
+                    const distCounts = {};
+                    inZip.forEach(f => {
+                        if (f.supervisor_district) {
+                            distCounts[f.supervisor_district] = (distCounts[f.supervisor_district] || 0) + 1;
+                        }
+                    });
+                    // Sort districts by facility count descending
+                    const distsSorted = Object.entries(distCounts).sort((a, b) => b[1] - a[1]).map(e => e[0]);
+                    result[z.zip] = {
+                        totalCap: inZip.reduce((s, f) => s + (f.facility_capacity || 0), 0),
+                        elfaCap: inZip.filter(f => f.elfa_contracted === 'Yes').reduce((s, f) => s + (f.facility_capacity || 0), 0),
+                        count: inZip.length,
+                        districts: distsSorted
+                    };
+                });
+                return result;
+            }, [data]);
+
+            const zipDemandTotals = useMemo(() => {
+                const t = { total_hh: 0, le110: 0, b110_150: 0, b150_200: 0, gt200: 0, under3: 0, age3_4: 0, age5: 0 };
+                ZIP_DEMAND_DATA.forEach(d => { Object.keys(t).forEach(k => { t[k] += d[k]; }); });
+                t.under6 = t.under3 + t.age3_4 + t.age5;
+                return t;
+            }, []);
+
+            const zipTableData = useMemo(() => {
+                const rows = ZIP_DEMAND_DATA.map(z => {
+                    const supply = supplyByZip[z.zip] || { totalCap: 0, elfaCap: 0, count: 0, districts: [] };
+                    const under6 = z.under3 + z.age3_4 + z.age5;
+                    const dists = supply.districts || [];
+                    return {
+                        zip: z.zip,
+                        districts: dists.join(', ') || '-',
+                        primaryDistrict: dists.length > 0 ? parseInt(dists[0]) : 99,
+                        facilities: supply.count,
+                        totalCap: supply.totalCap,
+                        elfaCap: supply.elfaCap,
+                        elfaPct: supply.totalCap > 0 ? Math.round(supply.elfaCap / supply.totalCap * 100) : 0,
+                        under6,
+                        le110: z.le110,
+                        le200: z.le110 + z.b110_150 + z.b150_200,
+                        slotsPerChild: under6 > 0 ? parseFloat((supply.totalCap / under6).toFixed(2)) : 0
+                    };
+                });
+                const dir = zipSortAsc ? 1 : -1;
+                rows.sort((a, b) => {
+                    if (zipSortCol === 'districts') return dir * (a.primaryDistrict - b.primaryDistrict);
+                    const av = a[zipSortCol], bv = b[zipSortCol];
+                    if (typeof av === 'string') return dir * av.localeCompare(bv);
+                    return dir * (av - bv);
+                });
+                return rows;
+            }, [supplyByZip, zipSortCol, zipSortAsc]);
+
+            const zipSupplyTotals = useMemo(() => {
+                return {
+                    totalCap: Object.values(supplyByZip).reduce((s, v) => s + v.totalCap, 0),
+                    elfaCap: Object.values(supplyByZip).reduce((s, v) => s + v.elfaCap, 0),
+                    count: Object.values(supplyByZip).reduce((s, v) => s + v.count, 0)
+                };
+            }, [supplyByZip]);
+
+            const zipChartRef = useRef(null);
+            const zipChartInst = useRef(null);
 
             const overviewChartRef = useRef(null);
             const overviewChartInst = useRef(null);
@@ -1136,6 +1248,98 @@
                     }
                 });
             }, [data, supplyByDistrict, tab, corridor]);
+
+            // ===== ZIP code comparison chart =====
+            useEffect(() => {
+                if (tab !== 'landscape') return;
+                if (!zipChartRef.current || !data.length) return;
+                if (zipChartInst.current) zipChartInst.current.destroy();
+
+                const labels = ZIP_DEMAND_DATA.map(z => z.zip);
+                const elfaCapData = labels.map(z => supplyByZip[z]?.elfaCap || 0);
+                const nonElfaCapData = labels.map(z => {
+                    const s = supplyByZip[z] || {};
+                    return (s.totalCap || 0) - (s.elfaCap || 0);
+                });
+
+                zipChartInst.current = new Chart(zipChartRef.current, {
+                    type: 'bar',
+                    data: {
+                        labels,
+                        datasets: [
+                            {
+                                label: 'ELFA Contracted',
+                                data: elfaCapData,
+                                backgroundColor: '#7b2d8e',
+                                borderColor: '#6a2579',
+                                borderWidth: 1,
+                                stack: 'capacity'
+                            },
+                            {
+                                label: 'CA Licensed (non-ELFA)',
+                                data: nonElfaCapData,
+                                backgroundColor: 'rgba(66, 133, 244, 0.7)',
+                                borderColor: 'rgba(66, 133, 244, 1)',
+                                borderWidth: 1,
+                                stack: 'capacity'
+                            },
+                            {
+                                label: 'HH w/ kids <6 \u2264110% AMI',
+                                data: ZIP_DEMAND_DATA.map(z => z.le110),
+                                backgroundColor: '#1B6B4A',
+                                borderColor: '#155a3e',
+                                borderWidth: 1,
+                                stack: 'eligible'
+                            },
+                            {
+                                label: 'HH w/ kids <6 110\u2013150% AMI',
+                                data: ZIP_DEMAND_DATA.map(z => z.b110_150),
+                                backgroundColor: '#2D8F64',
+                                borderColor: '#247a54',
+                                borderWidth: 1,
+                                stack: 'eligible'
+                            },
+                            {
+                                label: 'HH w/ kids <6 150\u2013200% AMI',
+                                data: ZIP_DEMAND_DATA.map(z => z.b150_200),
+                                backgroundColor: '#E07B3C',
+                                borderColor: '#c96a30',
+                                borderWidth: 1,
+                                stack: 'eligible'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+                            tooltip: {
+                                callbacks: {
+                                    label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString(),
+                                    afterBody: function(items) {
+                                        const idx = items[0].dataIndex;
+                                        const di = items[0].datasetIndex;
+                                        const z = ZIP_DEMAND_DATA[idx];
+                                        if (di <= 1) {
+                                            const s = supplyByZip[z.zip] || {};
+                                            return 'Total licensed: ' + (s.totalCap || 0).toLocaleString();
+                                        }
+                                        if (di >= 2) {
+                                            return 'Total ELFA-eligible HH: ' + (z.le110 + z.b110_150 + z.b150_200).toLocaleString();
+                                        }
+                                        return '';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: { beginAtZero: true, stacked: true, ticks: { callback: v => v.toLocaleString() } },
+                            x: { stacked: true }
+                        }
+                    }
+                });
+            }, [data, supplyByZip, tab]);
 
             // Invalidate map sizes when switching tabs
             useEffect(() => {
@@ -1760,6 +1964,75 @@
                         </div>
                     </div>
                     {/* ==================== END CORRIDOR ANALYSIS ==================== */}
+
+                    {/* ==================== ZIP CODE ANALYSIS SECTION ==================== */}
+                    <div className="landscape-panel" style={{marginTop: '20px'}}>
+                        <h2>ZIP Code Analysis</h2>
+                        <div className="landscape-disclaimer">
+                            Supply and demand at the ZCTA (ZIP Code Tabulation Area) level. Supply = licensed capacity from facilities
+                            with that ZIP code. Demand = ACS 2020&ndash;2024 households and child population estimates.
+                        </div>
+
+                        <h3>All ZIP Codes &mdash; Licensed Supply vs Demand</h3>
+                        <div className="landscape-table-wrap">
+                            <table className="landscape-table">
+                                <thead>
+                                    <tr>
+                                        <th style={{cursor:'pointer'}} onClick={() => handleZipSort('zip')}>ZIP{zipSortArrow('zip')}</th>
+                                        <th style={{cursor:'pointer'}} onClick={() => handleZipSort('districts')}>District(s){zipSortArrow('districts')}</th>
+                                        <th style={{cursor:'pointer'}} onClick={() => handleZipSort('facilities')}>Facilities{zipSortArrow('facilities')}</th>
+                                        <th style={{cursor:'pointer'}} onClick={() => handleZipSort('totalCap')}>Licensed Capacity{zipSortArrow('totalCap')}</th>
+                                        <th style={{cursor:'pointer'}} onClick={() => handleZipSort('elfaCap')}>ELFA Capacity{zipSortArrow('elfaCap')}</th>
+                                        <th style={{cursor:'pointer'}} onClick={() => handleZipSort('elfaPct')}>ELFA %{zipSortArrow('elfaPct')}</th>
+                                        <th style={{cursor:'pointer'}} onClick={() => handleZipSort('under6')}>Children &lt;6 (all incomes){zipSortArrow('under6')}</th>
+                                        <th style={{cursor:'pointer'}} onClick={() => handleZipSort('le110')}>HH w/ Kids &lt;6 &le;110% AMI{zipSortArrow('le110')}</th>
+                                        <th style={{cursor:'pointer'}} onClick={() => handleZipSort('le200')}>HH w/ Kids &lt;6 &le;200% AMI{zipSortArrow('le200')}</th>
+                                        <th style={{cursor:'pointer'}} onClick={() => handleZipSort('slotsPerChild')}>Slots per Child{zipSortArrow('slotsPerChild')}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {zipTableData.map(row => (
+                                        <tr key={row.zip}>
+                                            <td>{row.zip}</td>
+                                            <td>{row.districts}</td>
+                                            <td>{row.facilities.toLocaleString()}</td>
+                                            <td>{row.totalCap.toLocaleString()}</td>
+                                            <td>{row.elfaCap.toLocaleString()}</td>
+                                            <td>{row.elfaPct}%</td>
+                                            <td>{row.under6.toLocaleString()}</td>
+                                            <td>{row.le110.toLocaleString()}</td>
+                                            <td>{row.le200.toLocaleString()}</td>
+                                            <td>{row.slotsPerChild > 0 ? row.slotsPerChild.toFixed(2) : '-'}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td>Citywide</td>
+                                        <td>1&ndash;11</td>
+                                        <td>{zipSupplyTotals.count.toLocaleString()}</td>
+                                        <td>{zipSupplyTotals.totalCap.toLocaleString()}</td>
+                                        <td>{zipSupplyTotals.elfaCap.toLocaleString()}</td>
+                                        <td>{zipSupplyTotals.totalCap > 0 ? Math.round(zipSupplyTotals.elfaCap / zipSupplyTotals.totalCap * 100) : 0}%</td>
+                                        <td>{zipDemandTotals.under6?.toLocaleString()}</td>
+                                        <td>{zipDemandTotals.le110.toLocaleString()}</td>
+                                        <td>{(zipDemandTotals.le110 + zipDemandTotals.b110_150 + zipDemandTotals.b150_200).toLocaleString()}</td>
+                                        <td>{zipDemandTotals.under6 > 0 ? (zipSupplyTotals.totalCap / zipDemandTotals.under6).toFixed(2) : '-'}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+
+                        <h3>Licensed Supply vs Eligible Households by ZIP</h3>
+                        <div className="landscape-chart-wrap">
+                            <div className="chart-subtitle">Stacked bars compare licensed capacity (ELFA + non-ELFA) against ELFA-eligible households by ZIP code</div>
+                            <div style={{height: '400px'}}>
+                                <canvas ref={zipChartRef} className="landscape-chart-canvas"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    {/* ==================== END ZIP CODE ANALYSIS ==================== */}
+
                 </div>
 
                 </div>
