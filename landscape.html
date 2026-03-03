@@ -342,6 +342,13 @@
         .corridor-btn.active { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-color: transparent; }
         .corridor-dists { font-size: 10px; opacity: 0.7; }
 
+        .geo-selector { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+        .geo-btn { padding: 9px 18px; background: #f0f0f0; border: 1px solid #ddd; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .geo-btn:hover { background: #e0e0e0; }
+        .geo-btn.active { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-color: transparent; }
+        .sub-selector { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
+        .landscape-table tr.row-highlighted { background: #f0f0ff; }
+
         /* Responsive */
         @media (max-width: 1024px) { .grid { grid-template-columns: 1fr; } .sidebar { position: static; } .supply-demand-grid { grid-template-columns: 1fr; } }
         @media (max-width: 768px) { .header-content { flex-direction: column; align-items: flex-start; } #map { height: 400px; } .landscape-cards { grid-template-columns: 1fr 1fr; } }
@@ -468,8 +475,6 @@
             const chartInst = useRef(null);
             const landscapeChartRef = useRef(null);
             const landscapeChartInst = useRef(null);
-            const supplyChartRef = useRef(null);
-            const supplyChartInst = useRef(null);
             const districtMapRef = useRef(null);
             const districtMapInst = useRef(null);
             const [districtGeo, setDistrictGeo] = useState(null);
@@ -600,6 +605,11 @@
                 return t;
             }, []);
 
+            // ===== Geographic lens state =====
+            const [geoView, setGeoView] = useState('citywide');
+            const [selectedDistrict, setSelectedDistrict] = useState(1);
+            const [selectedZip, setSelectedZip] = useState('94102');
+
             // ===== Corridor analysis =====
             const [corridor, setCorridor] = useState('Westside');
 
@@ -639,6 +649,10 @@
                 });
             }, [supplyByDistrict]);
 
+            // ===== Selected district derived data =====
+            const selectedDistrictDemand = useMemo(() => DEMAND_DATA.find(d => d.district === selectedDistrict) || DEMAND_DATA[0], [selectedDistrict]);
+            const selectedDistrictSupply = useMemo(() => supplyByDistrict[selectedDistrict] || {totalCap:0,elfaCap:0,infantCap:0,count:0}, [selectedDistrict, supplyByDistrict]);
+
             // ===== ZIP code analysis =====
             const [zipSortCol, setZipSortCol] = useState('zip');
             const [zipSortAsc, setZipSortAsc] = useState(true);
@@ -671,6 +685,10 @@
                 });
                 return result;
             }, [data]);
+
+            // ===== Selected ZIP derived data =====
+            const selectedZipDemand = useMemo(() => ZIP_DEMAND_DATA.find(z => z.zip === selectedZip) || ZIP_DEMAND_DATA[0], [selectedZip]);
+            const selectedZipSupply = useMemo(() => supplyByZip[selectedZip] || {totalCap:0,elfaCap:0,count:0,districts:[]}, [selectedZip, supplyByZip]);
 
             const zipDemandTotals = useMemo(() => {
                 const t = { total_hh: 0, le110: 0, b110_150: 0, b150_200: 0, gt200: 0, under3: 0, age3_4: 0, age5: 0 };
@@ -718,6 +736,9 @@
 
             const zipChartRef = useRef(null);
             const zipChartInst = useRef(null);
+
+            const citywideChartRef = useRef(null);
+            const citywideChartInst = useRef(null);
 
             const overviewChartRef = useRef(null);
             const overviewChartInst = useRef(null);
@@ -834,9 +855,9 @@
                 });
             }, [filtered, tab]);
 
-            // ===== Landscape grouped bar chart =====
+            // ===== Landscape grouped bar chart (district view) =====
             useEffect(() => {
-                if (tab !== 'landscape') return;
+                if (tab !== 'landscape' || geoView !== 'district') return;
                 if (!landscapeChartRef.current || !data.length) return;
                 if (landscapeChartInst.current) landscapeChartInst.current.destroy();
 
@@ -847,6 +868,12 @@
                     return (s.totalCap || 0) - (s.elfaCap || 0);
                 });
 
+                const hiElfa = DEMAND_DATA.map(d => d.district === selectedDistrict ? '#7b2d8e' : 'rgba(123,45,142,0.25)');
+                const hiBlue = DEMAND_DATA.map(d => d.district === selectedDistrict ? 'rgba(66,133,244,0.7)' : 'rgba(66,133,244,0.2)');
+                const hiGreen1 = DEMAND_DATA.map(d => d.district === selectedDistrict ? '#1B6B4A' : 'rgba(27,107,74,0.25)');
+                const hiGreen2 = DEMAND_DATA.map(d => d.district === selectedDistrict ? '#2D8F64' : 'rgba(45,143,100,0.25)');
+                const hiOrange = DEMAND_DATA.map(d => d.district === selectedDistrict ? '#E07B3C' : 'rgba(224,123,60,0.25)');
+
                 landscapeChartInst.current = new Chart(landscapeChartRef.current, {
                     type: 'bar',
                     data: {
@@ -855,7 +882,7 @@
                             {
                                 label: 'ELFA Contracted (subset of CA licensed)',
                                 data: elfaCapData,
-                                backgroundColor: '#7b2d8e',
+                                backgroundColor: hiElfa,
                                 borderColor: '#6a2579',
                                 borderWidth: 1,
                                 stack: 'capacity'
@@ -863,7 +890,7 @@
                             {
                                 label: 'CA Licensed (non-ELFA)',
                                 data: nonElfaCapData,
-                                backgroundColor: 'rgba(66, 133, 244, 0.7)',
+                                backgroundColor: hiBlue,
                                 borderColor: 'rgba(66, 133, 244, 1)',
                                 borderWidth: 1,
                                 stack: 'capacity'
@@ -871,7 +898,7 @@
                             {
                                 label: 'HH w/ kids <6 \u2264110% AMI (ELFA fully funded)',
                                 data: DEMAND_DATA.map(d => d.le110),
-                                backgroundColor: '#1B6B4A',
+                                backgroundColor: hiGreen1,
                                 borderColor: '#155a3e',
                                 borderWidth: 1,
                                 stack: 'eligible'
@@ -879,7 +906,7 @@
                             {
                                 label: 'HH w/ kids <6 110\u2013150% AMI (tuition credit)',
                                 data: DEMAND_DATA.map(d => d.b110_150),
-                                backgroundColor: '#2D8F64',
+                                backgroundColor: hiGreen2,
                                 borderColor: '#247a54',
                                 borderWidth: 1,
                                 stack: 'eligible'
@@ -887,7 +914,7 @@
                             {
                                 label: 'HH w/ kids <6 150\u2013200% AMI (expanding 7/1/2026)',
                                 data: DEMAND_DATA.map(d => d.b150_200),
-                                backgroundColor: '#E07B3C',
+                                backgroundColor: hiOrange,
                                 borderColor: '#c96a30',
                                 borderWidth: 1,
                                 stack: 'eligible'
@@ -936,64 +963,89 @@
                         }
                     }
                 });
-            }, [data, supplyByDistrict, tab]);
+            }, [data, supplyByDistrict, tab, geoView, selectedDistrict]);
 
-            // ===== Supply breakdown chart (ELFA vs non-ELFA) =====
+            // ===== Citywide supply vs demand bar chart =====
             useEffect(() => {
-                if (tab !== 'landscape') return;
-                if (!supplyChartRef.current || !data.length) return;
-                if (supplyChartInst.current) supplyChartInst.current.destroy();
+                if (tab !== 'landscape' || geoView !== 'citywide') return;
+                if (!citywideChartRef.current || !data.length) return;
+                if (citywideChartInst.current) citywideChartInst.current.destroy();
 
-                const labels = DEMAND_DATA.map(d => 'D' + d.district);
-                const elfaData = DEMAND_DATA.map(d => supplyByDistrict[d.district]?.elfaCap || 0);
-                const nonElfaData = DEMAND_DATA.map(d => {
-                    const s = supplyByDistrict[d.district] || {};
-                    return (s.totalCap || 0) - (s.elfaCap || 0);
-                });
+                const t = supplyByDistrict.total || {};
+                const nonElfa = (t.totalCap || 0) - (t.elfaCap || 0);
+                const le200 = demandTotals.le110 + demandTotals.b110_150 + demandTotals.b150_200;
 
-                supplyChartInst.current = new Chart(supplyChartRef.current, {
+                citywideChartInst.current = new Chart(citywideChartRef.current, {
                     type: 'bar',
                     data: {
-                        labels,
+                        labels: ['Licensed Supply', 'ELFA-Eligible Demand'],
                         datasets: [
                             {
-                                label: 'ELFA Contracted (subset of CA licensed)',
-                                data: elfaData,
+                                label: 'ELFA Contracted',
+                                data: [t.elfaCap || 0, null],
                                 backgroundColor: '#7b2d8e',
-                                borderWidth: 0
+                                borderColor: '#6a2579',
+                                borderWidth: 1,
+                                stack: 'stack'
                             },
                             {
                                 label: 'CA Licensed (non-ELFA)',
-                                data: nonElfaData,
-                                backgroundColor: 'rgba(66, 133, 244, 0.6)',
-                                borderWidth: 0
+                                data: [nonElfa, null],
+                                backgroundColor: 'rgba(66, 133, 244, 0.7)',
+                                borderColor: 'rgba(66, 133, 244, 1)',
+                                borderWidth: 1,
+                                stack: 'stack'
+                            },
+                            {
+                                label: 'HH w/ kids <6 \u2264110% AMI',
+                                data: [null, demandTotals.le110],
+                                backgroundColor: '#1B6B4A',
+                                borderColor: '#155a3e',
+                                borderWidth: 1,
+                                stack: 'stack'
+                            },
+                            {
+                                label: 'HH w/ kids <6 110\u2013150% AMI',
+                                data: [null, demandTotals.b110_150],
+                                backgroundColor: '#2D8F64',
+                                borderColor: '#247a54',
+                                borderWidth: 1,
+                                stack: 'stack'
+                            },
+                            {
+                                label: 'HH w/ kids <6 150\u2013200% AMI',
+                                data: [null, demandTotals.b150_200],
+                                backgroundColor: '#E07B3C',
+                                borderColor: '#c96a30',
+                                borderWidth: 1,
+                                stack: 'stack'
                             }
                         ]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        indexAxis: 'y',
                         plugins: {
                             legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
                             tooltip: {
                                 callbacks: {
-                                    label: ctx => ctx.dataset.label + ': ' + ctx.parsed.x.toLocaleString(),
+                                    label: ctx => ctx.parsed.y != null ? ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString() : '',
                                     afterBody: function(items) {
                                         const idx = items[0].dataIndex;
-                                        const s = supplyByDistrict[DEMAND_DATA[idx].district] || {};
-                                        return 'Total: ' + (s.totalCap || 0).toLocaleString();
+                                        if (idx === 0) return 'Total licensed: ' + (t.totalCap || 0).toLocaleString();
+                                        if (idx === 1) return 'Total ELFA-eligible HH: ' + le200.toLocaleString();
+                                        return '';
                                     }
                                 }
                             }
                         },
                         scales: {
-                            x: { stacked: true, beginAtZero: true, ticks: { callback: v => v.toLocaleString() } },
-                            y: { stacked: true }
+                            y: { beginAtZero: true, stacked: true, ticks: { callback: v => v.toLocaleString() } },
+                            x: { stacked: true }
                         }
                     }
                 });
-            }, [data, supplyByDistrict, tab]);
+            }, [data, supplyByDistrict, demandTotals, tab, geoView]);
 
             // ===== District reference map =====
             const DISTRICT_COLORS = [
@@ -1002,7 +1054,7 @@
             ];
 
             useEffect(() => {
-                if (tab !== 'landscape') return;
+                if (tab !== 'landscape' || geoView !== 'citywide') return;
                 if (!districtGeo || !districtMapRef.current) return;
                 if (districtMapInst.current) return;
 
@@ -1070,11 +1122,11 @@
                 }).addTo(m);
 
                 districtMapInst.current = m;
-            }, [districtGeo, supplyByDistrict, tab]);
+            }, [districtGeo, supplyByDistrict, tab, geoView]);
 
             // ===== All-corridors overview chart =====
             useEffect(() => {
-                if (tab !== 'landscape') return;
+                if (tab !== 'landscape' || geoView !== 'corridor') return;
                 if (!overviewChartRef.current || !data.length) return;
                 if (overviewChartInst.current) overviewChartInst.current.destroy();
 
@@ -1152,11 +1204,11 @@
                         }
                     }
                 });
-            }, [data, supplyByDistrict, tab, allCorridorsTotals]);
+            }, [data, supplyByDistrict, tab, allCorridorsTotals, geoView]);
 
             // ===== Corridor comparison chart =====
             useEffect(() => {
-                if (tab !== 'landscape') return;
+                if (tab !== 'landscape' || geoView !== 'corridor') return;
                 if (!corridorChartRef.current || !data.length) return;
                 if (corridorChartInst.current) corridorChartInst.current.destroy();
 
@@ -1247,11 +1299,11 @@
                         }
                     }
                 });
-            }, [data, supplyByDistrict, tab, corridor]);
+            }, [data, supplyByDistrict, tab, corridor, geoView]);
 
             // ===== ZIP code comparison chart =====
             useEffect(() => {
-                if (tab !== 'landscape') return;
+                if (tab !== 'landscape' || geoView !== 'zip') return;
                 if (!zipChartRef.current || !data.length) return;
                 if (zipChartInst.current) zipChartInst.current.destroy();
 
@@ -1339,20 +1391,20 @@
                         }
                     }
                 });
-            }, [data, supplyByZip, tab]);
+            }, [data, supplyByZip, tab, geoView]);
 
-            // Invalidate map sizes when switching tabs
+            // Invalidate map sizes when switching tabs/views
             useEffect(() => {
                 setTimeout(() => {
                     if (tab === 'programs' && mapInst.current) {
                         mapInst.current.invalidateSize();
                     }
-                    if (tab === 'landscape' && districtMapInst.current) {
+                    if (tab === 'landscape' && geoView === 'citywide' && districtMapInst.current) {
                         districtMapInst.current.invalidateSize();
                         districtMapInst.current.setView([37.7600, -122.4400], 12);
                     }
                 }, 50);
-            }, [tab]);
+            }, [tab, geoView]);
 
             const toggle = (arr, set, val) => {
                 set(arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val]);
@@ -1658,380 +1710,415 @@
                 </div>
 
                 <div style={{display: tab === 'landscape' ? 'block' : 'none'}}>
-                    {/* ==================== CHILD CARE LANDSCAPE PANEL ==================== */}
+                    {/* ==================== SUPPLY & DEMAND PANEL ==================== */}
                     <div className="landscape-panel">
-                        <h2>Child Care Landscape</h2>
+                        <h2>Supply &amp; Demand</h2>
 
                         {/* Disclaimer */}
                         <div className="landscape-disclaimer">
-                            Licensed child care is one of many care arrangements families use. This data shows licensed capacity relative to the child population &mdash; it does not represent total care needs or imply that all families require licensed slots.
+                            Licensed child care is one of many care arrangements families use. This data shows licensed capacity relative to the child population &mdash; it does not represent total care needs or imply that all families require licensed slots. Note: Small family child care home (FCC) license data is not publicly available from CDSS, so the slot counts here only include small FCC homes with ELFA contracts. Actual licensed capacity citywide is higher than shown.
                         </div>
 
-                        {/* City-Wide Summary Cards */}
-                        <div className="landscape-cards">
-                            <div className="landscape-card">
-                                <div className="lc-value">{supplyByDistrict.total?.totalCap?.toLocaleString() || '...'}</div>
-                                <div className="lc-label">Licensed Slots</div>
-                                <div className="lc-context">Serving a total population of {demandTotals.under6?.toLocaleString()} children under 6 (all incomes)</div>
-                            </div>
-                            <div className="landscape-card">
-                                <div className="lc-value">{supplyByDistrict.total?.totalCap && demandTotals.under6 ? (supplyByDistrict.total.totalCap / demandTotals.under6).toFixed(2) : '...'}</div>
-                                <div className="lc-label">Licensed Slots per Child</div>
-                                <div className="lc-context">Many families use parental, FFN, or license-exempt care by choice</div>
-                            </div>
-                            <div className="landscape-card">
-                                <div className="lc-value">{supplyByDistrict.total?.elfaCap?.toLocaleString() || '...'}</div>
-                                <div className="lc-label">ELFA Contracted Slots</div>
-                                <div className="lc-context">{supplyByDistrict.total?.totalCap > 0 ? Math.round((supplyByDistrict.total?.elfaCap || 0) / supplyByDistrict.total.totalCap * 100) : 0}% of all licensed capacity</div>
-                            </div>
-                            <div className="landscape-card">
-                                <div className="lc-value">{supplyByDistrict.total?.infantCap?.toLocaleString() || '...'}</div>
-                                <div className="lc-label">Infant/Toddler Center Slots</div>
-                                <div className="lc-context">Relative to {demandTotals.under3?.toLocaleString()} children under 3</div>
-                            </div>
-                        </div>
-
-                        {/* ===== Two-column: Supply | Demand ===== */}
-                        <div className="supply-demand-grid">
-
-                            {/* LEFT: Supply */}
-                            <div className="sd-column">
-                                <h3 className="supply-heading">Licensed Care Supply</h3>
-
-                                <h4>Supervisor Districts</h4>
-                                <div id="district-map" ref={districtMapRef} style={{height: '360px', borderRadius: '8px', border: '1px solid #e0e0e0', marginBottom: '8px'}}></div>
-                                <div style={{display: 'flex', flexWrap: 'wrap', gap: '4px 12px', fontSize: '11px', color: '#666', marginBottom: '16px'}}>
-                                    {DEMAND_DATA.map(d => {
-                                        const geo = districtGeo?.features?.find(f => parseInt(f.properties.district) === d.district);
-                                        return <span key={d.district}><span style={{display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: DISTRICT_COLORS[d.district - 1], marginRight: 3, verticalAlign: 'middle'}}></span>D{d.district} {geo?.properties?.name || ''}</span>;
-                                    })}
-                                </div>
-
-                                <h4>Licensed Capacity by District</h4>
-                                <div style={{fontSize: '12px', color: '#888', fontStyle: 'italic', marginBottom: '8px'}}>All CA licensed capacity — ELFA contracted shown as subset</div>
-                                <div style={{height: '340px'}}>
-                                    <canvas ref={supplyChartRef}></canvas>
-                                </div>
-                            </div>
-
-                            {/* RIGHT: Demand */}
-                            <div className="sd-column">
-                                <h3 className="demand-heading">Child Population &amp; Income</h3>
-
-                                <h4>Households with Children Under 6 by Income</h4>
-                                <div style={{fontSize: '11px', color: '#888', fontStyle: 'italic', marginBottom: '6px'}}>Each bar = households with children under 6 in that district, split by income</div>
-                                <div className="ami-legend" style={{marginBottom: '10px'}}>
-                                    <div className="ami-legend-item"><div className="ami-legend-swatch" style={{background: AMI_COLORS.le110}}></div><span>&le;110% AMI</span></div>
-                                    <div className="ami-legend-item"><div className="ami-legend-swatch" style={{background: AMI_COLORS.b110_150}}></div><span>110&ndash;150%</span></div>
-                                    <div className="ami-legend-item"><div className="ami-legend-swatch" style={{background: AMI_COLORS.b150_200}}></div><span>150&ndash;200%</span></div>
-                                    <div className="ami-legend-item"><div className="ami-legend-swatch" style={{background: AMI_COLORS.gt200}}></div><span>&gt;200%</span></div>
-                                </div>
-                                <div className="ami-bars-section">
-                                    {DEMAND_DATA.map(d => {
-                                        const maxVal = Math.max(...DEMAND_DATA.map(x => x.total_hh));
-                                        const pct = v => ((v / maxVal) * 100).toFixed(1) + '%';
-                                        return <div key={d.district} className="ami-bar-row" style={{marginBottom: '8px'}}>
-                                            <div className="ami-bar-label">D{d.district}</div>
-                                            <div className="ami-bar-track">
-                                                <div className="ami-bar-seg" style={{width: pct(d.le110), background: AMI_COLORS.le110}} title={`\u2264110% AMI: ${d.le110.toLocaleString()} HH with kids <6`}>
-                                                    {d.le110 > maxVal * 0.06 ? d.le110.toLocaleString() : ''}
-                                                </div>
-                                                <div className="ami-bar-seg" style={{width: pct(d.b110_150), background: AMI_COLORS.b110_150}} title={`110-150% AMI: ${d.b110_150.toLocaleString()} HH with kids <6`}>
-                                                </div>
-                                                <div className="ami-bar-seg" style={{width: pct(d.b150_200), background: AMI_COLORS.b150_200}} title={`150-200% AMI: ${d.b150_200.toLocaleString()} HH with kids <6`}>
-                                                </div>
-                                                <div className="ami-bar-seg" style={{width: pct(d.gt200), background: AMI_COLORS.gt200, color: '#666'}} title={`>200% AMI: ${d.gt200.toLocaleString()} HH with kids <6`}>
-                                                    {d.gt200 > maxVal * 0.06 ? d.gt200.toLocaleString() : ''}
-                                                </div>
-                                            </div>
-                                        </div>;
-                                    })}
-                                </div>
-                                <div className="landscape-footnote" style={{marginBottom: '16px'}}>
-                                    ELFA eligibility expands to 200% AMI on July 1, 2026.
-                                </div>
-
-                                <div className="care-arrangement" style={{marginBottom: 0}}>
-                                    <h4 style={{margin: '0 0 8px', color: '#555', fontSize: '13px', fontWeight: 600}}>How Families Arrange Care</h4>
-                                    <ul>
-                                        <li>Parent/guardian at home</li>
-                                        <li>Family, friend, or neighbor (FFN) care</li>
-                                        <li>License-exempt care</li>
-                                        <li>Licensed family child care</li>
-                                        <li>Licensed centers</li>
-                                    </ul>
-                                    <div className="context-note">
-                                        National estimates (Census NHES) suggest roughly 60% of children under 6 are in some form of regular non-parental care. Licensed care is one of several options.
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* ===== Full-width: Combined table ===== */}
-                        <h3>Licensed Supply by District</h3>
-                        <div className="landscape-table-wrap">
-                            <table className="landscape-table">
-                                <thead>
-                                    <tr>
-                                        <th>District</th>
-                                        <th>Licensed Capacity</th>
-                                        <th>ELFA Capacity</th>
-                                        <th>ELFA %</th>
-                                        <th>All Children Under 6</th>
-                                        <th>Slots per Child</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {DEMAND_DATA.map(d => {
-                                        const supply = supplyByDistrict[d.district] || {};
-                                        const under6 = d.under3 + d.age3_4 + d.age5;
-                                        const slotsPerChild = under6 > 0 ? (supply.totalCap / under6).toFixed(2) : '-';
-                                        const elfaPct = supply.totalCap > 0 ? Math.round((supply.elfaCap || 0) / supply.totalCap * 100) : 0;
-                                        return <tr key={d.district}>
-                                            <td>District {d.district}</td>
-                                            <td>{(supply.totalCap || 0).toLocaleString()}</td>
-                                            <td>{(supply.elfaCap || 0).toLocaleString()}</td>
-                                            <td>{elfaPct}%</td>
-                                            <td>{under6.toLocaleString()}</td>
-                                            <td>{slotsPerChild}</td>
-                                        </tr>;
-                                    })}
-                                </tbody>
-                                <tfoot>
-                                    <tr>
-                                        <td>Citywide</td>
-                                        <td>{(supplyByDistrict.total?.totalCap || 0).toLocaleString()}</td>
-                                        <td>{(supplyByDistrict.total?.elfaCap || 0).toLocaleString()}</td>
-                                        <td>{supplyByDistrict.total?.totalCap > 0 ? Math.round((supplyByDistrict.total?.elfaCap || 0) / supplyByDistrict.total.totalCap * 100) : 0}%</td>
-                                        <td>{demandTotals.under6?.toLocaleString()}</td>
-                                        <td>{supplyByDistrict.total?.totalCap && demandTotals.under6 ? (supplyByDistrict.total.totalCap / demandTotals.under6).toFixed(2) : '-'}</td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                        <div className="landscape-footnote">
-                            Not all families seek licensed care. Slots per child compares licensed capacity to the total child population (all incomes, ACS B09001).
-                            ELFA % = share of a district's total licensed slots that are ELFA-contracted. Household income data shown separately in the AMI chart above.
-                        </div>
-
-                        {/* ===== Full-width: Comparison chart ===== */}
-                        <h3>Licensed Supply vs Households with Children Under 6 by District</h3>
-                        <div className="landscape-chart-wrap">
-                            <div className="chart-subtitle">Eligibility does not equal demand &mdash; not all eligible households seek licensed care</div>
-                            <div style={{height: '380px'}}>
-                                <canvas ref={landscapeChartRef} className="landscape-chart-canvas"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                    {/* ==================== END LANDSCAPE PANEL ==================== */}
-
-                    {/* ==================== CORRIDOR ANALYSIS SECTION ==================== */}
-                    <div className="landscape-panel" style={{marginTop: '20px'}}>
-                        <h2>Regional Corridor Analysis</h2>
-                        <div className="landscape-disclaimer">
-                            Districts are grouped into geographic corridors to show cross-district supply and demand. Families often cross district lines &mdash; corridor totals help assess regional capacity.
-                        </div>
-
-                        {/* All-corridors overview chart */}
-                        <h3>All Corridors &mdash; Licensed Supply vs Eligible Households</h3>
-                        <div className="landscape-chart-wrap">
-                            <div className="chart-subtitle">Side-by-side comparison of all four corridors</div>
-                            <div style={{height: '320px'}}>
-                                <canvas ref={overviewChartRef} className="landscape-chart-canvas"></canvas>
-                            </div>
-                        </div>
-
-                        {/* All-corridors summary table */}
-                        <div className="landscape-table-wrap" style={{marginBottom: '24px'}}>
-                            <table className="landscape-table">
-                                <thead>
-                                    <tr>
-                                        <th>Corridor</th>
-                                        <th>Districts</th>
-                                        <th>Licensed Capacity</th>
-                                        <th>ELFA Capacity</th>
-                                        <th>ELFA %</th>
-                                        <th>Children Under 6</th>
-                                        <th>Slots per Child</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {allCorridorsTotals.map(c => {
-                                        const elfaPct = c.supply.totalCap > 0 ? Math.round(c.supply.elfaCap / c.supply.totalCap * 100) : 0;
-                                        const spc = c.demand.under6 > 0 ? (c.supply.totalCap / c.demand.under6).toFixed(2) : '-';
-                                        return <tr key={c.name} style={{cursor: 'pointer'}} onClick={() => setCorridor(c.name)}
-                                            title={'Click to view ' + c.name + ' detail below'}>
-                                            <td>{c.name}</td>
-                                            <td style={{fontWeight: 400}}>D{c.dists.join(', D')}</td>
-                                            <td>{c.supply.totalCap.toLocaleString()}</td>
-                                            <td>{c.supply.elfaCap.toLocaleString()}</td>
-                                            <td>{elfaPct}%</td>
-                                            <td>{c.demand.under6.toLocaleString()}</td>
-                                            <td>{spc}</td>
-                                        </tr>;
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-                        <div className="landscape-footnote" style={{marginBottom: '28px'}}>Click a corridor row above to jump to its detail below.</div>
-
-                        <h3 style={{marginTop: '32px', paddingTop: '24px', borderTop: '2px solid #e0e0e0'}}>Corridor Detail</h3>
-
-                        {/* Corridor selector buttons */}
-                        <div className="corridor-selector">
-                            {Object.entries(CORRIDORS).map(([name, dists]) => (
-                                <button key={name} className={`corridor-btn ${corridor === name ? 'active' : ''}`}
-                                    onClick={() => setCorridor(name)}>
-                                    {name} <span className="corridor-dists">(D{dists.join(', D')})</span>
-                                </button>
+                        {/* Geographic lens selector */}
+                        <div className="geo-selector">
+                            {[
+                                {key: 'citywide', label: 'Citywide'},
+                                {key: 'district', label: 'District'},
+                                {key: 'corridor', label: 'Corridor'},
+                                {key: 'zip', label: 'ZIP Code'}
+                            ].map(g => (
+                                <button key={g.key} className={`geo-btn ${geoView === g.key ? 'active' : ''}`}
+                                    onClick={() => setGeoView(g.key)}>{g.label}</button>
                             ))}
                         </div>
 
-                        {/* Summary cards for selected corridor */}
-                        <div className="landscape-cards">
-                            <div className="landscape-card">
-                                <div className="lc-value">{corridorSupplyTotals.totalCap.toLocaleString()}</div>
-                                <div className="lc-label">Licensed Slots</div>
-                                <div className="lc-context">{corridor} corridor</div>
+                        {/* ===== CITYWIDE VIEW ===== */}
+                        {geoView === 'citywide' && <>
+                            <div className="landscape-cards">
+                                <div className="landscape-card">
+                                    <div className="lc-value">{supplyByDistrict.total?.totalCap?.toLocaleString() || '...'}</div>
+                                    <div className="lc-label">Licensed Slots</div>
+                                    <div className="lc-context">Serving {demandTotals.under6?.toLocaleString()} children under 6 (all incomes)</div>
+                                </div>
+                                <div className="landscape-card">
+                                    <div className="lc-value">{supplyByDistrict.total?.totalCap && demandTotals.under6 ? (supplyByDistrict.total.totalCap / demandTotals.under6).toFixed(2) : '...'}</div>
+                                    <div className="lc-label">Slots per Child</div>
+                                    <div className="lc-context">Many families use parental, FFN, or license-exempt care by choice</div>
+                                </div>
+                                <div className="landscape-card">
+                                    <div className="lc-value">{supplyByDistrict.total?.elfaCap?.toLocaleString() || '...'}</div>
+                                    <div className="lc-label">ELFA Contracted</div>
+                                    <div className="lc-context">{supplyByDistrict.total?.totalCap > 0 ? Math.round((supplyByDistrict.total?.elfaCap || 0) / supplyByDistrict.total.totalCap * 100) : 0}% of all licensed capacity</div>
+                                </div>
+                                <div className="landscape-card">
+                                    <div className="lc-value">{supplyByDistrict.total?.infantCap?.toLocaleString() || '...'}</div>
+                                    <div className="lc-label">Infant/Toddler Slots</div>
+                                    <div className="lc-context">Relative to {demandTotals.under3?.toLocaleString()} children under 3</div>
+                                </div>
+                                <div className="landscape-card">
+                                    <div className="lc-value">{demandTotals.le110?.toLocaleString() || '...'}</div>
+                                    <div className="lc-label">HH w/ Kids &lt;6 &le;110% AMI</div>
+                                    <div className="lc-context">Currently fully funded ELFA tier</div>
+                                </div>
+                                <div className="landscape-card">
+                                    <div className="lc-value">{demandTotals.le110 != null ? (demandTotals.le110 + demandTotals.b110_150 + demandTotals.b150_200).toLocaleString() : '...'}</div>
+                                    <div className="lc-label">HH w/ Kids &lt;6 &le;200% AMI</div>
+                                    <div className="lc-context">Full ELFA-eligible pool after July 2026</div>
+                                </div>
                             </div>
-                            <div className="landscape-card">
-                                <div className="lc-value">{corridorSupplyTotals.elfaCap.toLocaleString()}</div>
-                                <div className="lc-label">ELFA Contracted</div>
-                                <div className="lc-context">{corridorSupplyTotals.totalCap > 0 ? Math.round(corridorSupplyTotals.elfaCap / corridorSupplyTotals.totalCap * 100) : 0}% of corridor capacity</div>
+
+                            {/* Two-column summary table */}
+                            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '28px'}}>
+                                <div>
+                                    <h4 style={{marginBottom: '8px'}}>Supply</h4>
+                                    <div className="landscape-table-wrap">
+                                        <table className="landscape-table">
+                                            <tbody>
+                                                <tr><td style={{textAlign: 'left'}}>Licensed Facilities</td><td>{supplyByDistrict.total?.count?.toLocaleString() || '...'}</td></tr>
+                                                <tr><td style={{textAlign: 'left'}}>Licensed Capacity (slots)</td><td>{supplyByDistrict.total?.totalCap?.toLocaleString() || '...'}</td></tr>
+                                                <tr><td style={{textAlign: 'left'}}>ELFA Contracted Capacity</td><td>{supplyByDistrict.total?.elfaCap?.toLocaleString() || '...'}</td></tr>
+                                                <tr><td style={{textAlign: 'left'}}>ELFA % of Licensed</td><td>{supplyByDistrict.total?.totalCap > 0 ? Math.round((supplyByDistrict.total?.elfaCap || 0) / supplyByDistrict.total.totalCap * 100) + '%' : '...'}</td></tr>
+                                                <tr><td style={{textAlign: 'left'}}>Infant/Toddler Center Slots</td><td>{supplyByDistrict.total?.infantCap?.toLocaleString() || '...'}</td></tr>
+                                                <tr><td style={{textAlign: 'left'}}>Licensed Slots per Child &lt;6</td><td>{supplyByDistrict.total?.totalCap && demandTotals.under6 ? (supplyByDistrict.total.totalCap / demandTotals.under6).toFixed(2) : '...'}</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 style={{marginBottom: '8px'}}>Demand</h4>
+                                    <div className="landscape-table-wrap">
+                                        <table className="landscape-table">
+                                            <tbody>
+                                                <tr><td style={{textAlign: 'left'}}>Children Under 6 (all incomes)</td><td>{demandTotals.under6?.toLocaleString() || '...'}</td></tr>
+                                                <tr><td style={{textAlign: 'left'}}>Children Under 3</td><td>{demandTotals.under3?.toLocaleString() || '...'}</td></tr>
+                                                <tr><td style={{textAlign: 'left'}}>HH w/ Kids &lt;6 &le;110% AMI</td><td>{demandTotals.le110?.toLocaleString() || '...'}</td></tr>
+                                                <tr><td style={{textAlign: 'left'}}>HH w/ Kids &lt;6 &le;200% AMI</td><td>{demandTotals.le110 != null ? (demandTotals.le110 + demandTotals.b110_150 + demandTotals.b150_200).toLocaleString() : '...'}</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="landscape-card">
-                                <div className="lc-value">{corridorDemandTotals.under6?.toLocaleString()}</div>
-                                <div className="lc-label">Children Under 6</div>
-                                <div className="lc-context">All incomes in corridor</div>
-                            </div>
-                            <div className="landscape-card">
-                                <div className="lc-value">{corridorDemandTotals.under6 > 0 ? (corridorSupplyTotals.totalCap / corridorDemandTotals.under6).toFixed(2) : '-'}</div>
-                                <div className="lc-label">Slots per Child</div>
-                                <div className="lc-context">Licensed slots / children under 6</div>
+                        </>}
+
+                        {/* District reference map (always mounted, display toggled) */}
+                        <div style={{display: geoView === 'citywide' ? 'block' : 'none', marginBottom: '28px'}}>
+                            <h3>District Reference Map</h3>
+                            <div id="district-map" ref={districtMapRef} style={{height: '360px', borderRadius: '8px', border: '1px solid #e0e0e0', marginBottom: '8px'}}></div>
+                            <div style={{display: 'flex', flexWrap: 'wrap', gap: '4px 12px', fontSize: '11px', color: '#666', marginBottom: '16px'}}>
+                                {DEMAND_DATA.map(d => {
+                                    const geo = districtGeo?.features?.find(f => parseInt(f.properties.district) === d.district);
+                                    return <span key={d.district}><span style={{display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: DISTRICT_COLORS[d.district - 1], marginRight: 3, verticalAlign: 'middle'}}></span>D{d.district} {geo?.properties?.name || ''}</span>;
+                                })}
                             </div>
                         </div>
 
-                        {/* Corridor district table */}
-                        <h3>{corridor} &mdash; Licensed Supply by District</h3>
-                        <div className="landscape-table-wrap">
-                            <table className="landscape-table">
-                                <thead>
-                                    <tr>
-                                        <th>District</th>
-                                        <th>Licensed Capacity</th>
-                                        <th>ELFA Capacity</th>
-                                        <th>ELFA %</th>
-                                        <th>All Children Under 6</th>
-                                        <th>Slots per Child</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {corridorDemand.map(d => {
-                                        const supply = supplyByDistrict[d.district] || {};
-                                        const under6 = d.under3 + d.age3_4 + d.age5;
-                                        const slotsPerChild = under6 > 0 ? (supply.totalCap / under6).toFixed(2) : '-';
-                                        const elfaPct = supply.totalCap > 0 ? Math.round((supply.elfaCap || 0) / supply.totalCap * 100) : 0;
-                                        return <tr key={d.district}>
-                                            <td>District {d.district}</td>
-                                            <td>{(supply.totalCap || 0).toLocaleString()}</td>
-                                            <td>{(supply.elfaCap || 0).toLocaleString()}</td>
-                                            <td>{elfaPct}%</td>
-                                            <td>{under6.toLocaleString()}</td>
-                                            <td>{slotsPerChild}</td>
-                                        </tr>;
-                                    })}
-                                </tbody>
-                                <tfoot>
-                                    <tr>
-                                        <td>{corridor} Total</td>
-                                        <td>{corridorSupplyTotals.totalCap.toLocaleString()}</td>
-                                        <td>{corridorSupplyTotals.elfaCap.toLocaleString()}</td>
-                                        <td>{corridorSupplyTotals.totalCap > 0 ? Math.round(corridorSupplyTotals.elfaCap / corridorSupplyTotals.totalCap * 100) : 0}%</td>
-                                        <td>{corridorDemandTotals.under6?.toLocaleString()}</td>
-                                        <td>{corridorDemandTotals.under6 > 0 ? (corridorSupplyTotals.totalCap / corridorDemandTotals.under6).toFixed(2) : '-'}</td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-
-                        {/* Corridor comparison chart */}
-                        <h3>{corridor} &mdash; Licensed Supply vs Eligible Households</h3>
-                        <div className="landscape-chart-wrap">
-                            <div className="chart-subtitle">Stacked bars compare licensed capacity (ELFA + non-ELFA) against ELFA-eligible households by district</div>
-                            <div style={{height: '300px'}}>
-                                <canvas ref={corridorChartRef} className="landscape-chart-canvas"></canvas>
+                        {/* Citywide bar chart */}
+                        {geoView === 'citywide' && <>
+                            <h3>Citywide Licensed Supply vs ELFA-Eligible Households</h3>
+                            <div className="landscape-chart-wrap">
+                                <div className="chart-subtitle">Total licensed capacity compared to households eligible for ELFA by income tier</div>
+                                <div style={{height: '320px'}}>
+                                    <canvas ref={citywideChartRef} className="landscape-chart-canvas"></canvas>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                    {/* ==================== END CORRIDOR ANALYSIS ==================== */}
+                        </>}
 
-                    {/* ==================== ZIP CODE ANALYSIS SECTION ==================== */}
-                    <div className="landscape-panel" style={{marginTop: '20px'}}>
-                        <h2>ZIP Code Analysis</h2>
-                        <div className="landscape-disclaimer">
-                            Supply and demand at the ZCTA (ZIP Code Tabulation Area) level. Supply = licensed capacity from facilities
-                            with that ZIP code. Demand = ACS 2020&ndash;2024 households and child population estimates.
-                        </div>
+                        {/* ===== DISTRICT VIEW ===== */}
+                        {geoView === 'district' && <>
+                            <div className="sub-selector">
+                                {DEMAND_DATA.map(d => (
+                                    <button key={d.district} className={`geo-btn ${selectedDistrict === d.district ? 'active' : ''}`}
+                                        onClick={() => setSelectedDistrict(d.district)} style={{padding: '7px 14px', fontSize: '12px'}}>
+                                        D{d.district}
+                                    </button>
+                                ))}
+                            </div>
 
-                        <h3>All ZIP Codes &mdash; Licensed Supply vs Demand</h3>
-                        <div className="landscape-table-wrap">
-                            <table className="landscape-table">
-                                <thead>
-                                    <tr>
-                                        <th style={{cursor:'pointer'}} onClick={() => handleZipSort('zip')}>ZIP{zipSortArrow('zip')}</th>
-                                        <th style={{cursor:'pointer'}} onClick={() => handleZipSort('districts')}>District(s){zipSortArrow('districts')}</th>
-                                        <th style={{cursor:'pointer'}} onClick={() => handleZipSort('facilities')}>Facilities{zipSortArrow('facilities')}</th>
-                                        <th style={{cursor:'pointer'}} onClick={() => handleZipSort('totalCap')}>Licensed Capacity{zipSortArrow('totalCap')}</th>
-                                        <th style={{cursor:'pointer'}} onClick={() => handleZipSort('elfaCap')}>ELFA Capacity{zipSortArrow('elfaCap')}</th>
-                                        <th style={{cursor:'pointer'}} onClick={() => handleZipSort('elfaPct')}>ELFA %{zipSortArrow('elfaPct')}</th>
-                                        <th style={{cursor:'pointer'}} onClick={() => handleZipSort('under6')}>Children &lt;6 (all incomes){zipSortArrow('under6')}</th>
-                                        <th style={{cursor:'pointer'}} onClick={() => handleZipSort('le110')}>HH w/ Kids &lt;6 &le;110% AMI{zipSortArrow('le110')}</th>
-                                        <th style={{cursor:'pointer'}} onClick={() => handleZipSort('le200')}>HH w/ Kids &lt;6 &le;200% AMI{zipSortArrow('le200')}</th>
-                                        <th style={{cursor:'pointer'}} onClick={() => handleZipSort('slotsPerChild')}>Slots per Child{zipSortArrow('slotsPerChild')}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {zipTableData.map(row => (
-                                        <tr key={row.zip}>
-                                            <td>{row.zip}</td>
-                                            <td>{row.districts}</td>
-                                            <td>{row.facilities.toLocaleString()}</td>
-                                            <td>{row.totalCap.toLocaleString()}</td>
-                                            <td>{row.elfaCap.toLocaleString()}</td>
-                                            <td>{row.elfaPct}%</td>
-                                            <td>{row.under6.toLocaleString()}</td>
-                                            <td>{row.le110.toLocaleString()}</td>
-                                            <td>{row.le200.toLocaleString()}</td>
-                                            <td>{row.slotsPerChild > 0 ? row.slotsPerChild.toFixed(2) : '-'}</td>
+                            <div className="landscape-cards">
+                                <div className="landscape-card">
+                                    <div className="lc-value">{selectedDistrictSupply.totalCap.toLocaleString()}</div>
+                                    <div className="lc-label">Licensed Slots</div>
+                                    <div className="lc-context">District {selectedDistrict}</div>
+                                </div>
+                                <div className="landscape-card">
+                                    <div className="lc-value">{(() => { const u6 = selectedDistrictDemand.under3 + selectedDistrictDemand.age3_4 + selectedDistrictDemand.age5; return u6 > 0 ? (selectedDistrictSupply.totalCap / u6).toFixed(2) : '-'; })()}</div>
+                                    <div className="lc-label">Slots per Child</div>
+                                    <div className="lc-context">Licensed slots / children under 6</div>
+                                </div>
+                                <div className="landscape-card">
+                                    <div className="lc-value">{selectedDistrictSupply.elfaCap.toLocaleString()}</div>
+                                    <div className="lc-label">ELFA Contracted</div>
+                                    <div className="lc-context">{selectedDistrictSupply.totalCap > 0 ? Math.round(selectedDistrictSupply.elfaCap / selectedDistrictSupply.totalCap * 100) : 0}% of district capacity</div>
+                                </div>
+                                <div className="landscape-card">
+                                    <div className="lc-value">{selectedDistrictSupply.infantCap.toLocaleString()}</div>
+                                    <div className="lc-label">Infant/Toddler Slots</div>
+                                    <div className="lc-context">Relative to {selectedDistrictDemand.under3.toLocaleString()} children under 3</div>
+                                </div>
+                                <div className="landscape-card">
+                                    <div className="lc-value">{(selectedDistrictDemand.under3 + selectedDistrictDemand.age3_4 + selectedDistrictDemand.age5).toLocaleString()}</div>
+                                    <div className="lc-label">Children Under 6</div>
+                                    <div className="lc-context">All incomes in district</div>
+                                </div>
+                                <div className="landscape-card">
+                                    <div className="lc-value">{(selectedDistrictDemand.le110 + selectedDistrictDemand.b110_150 + selectedDistrictDemand.b150_200).toLocaleString()}</div>
+                                    <div className="lc-label">HH &le;200% AMI</div>
+                                    <div className="lc-context">ELFA-eligible households</div>
+                                </div>
+                            </div>
+
+                            <div className="landscape-table-wrap" style={{marginBottom: '28px'}}>
+                                <table className="landscape-table">
+                                    <tbody>
+                                        <tr><td style={{textAlign: 'left'}}>Licensed Capacity</td><td>{selectedDistrictSupply.totalCap.toLocaleString()}</td></tr>
+                                        <tr><td style={{textAlign: 'left'}}>ELFA Contracted</td><td>{selectedDistrictSupply.elfaCap.toLocaleString()}</td></tr>
+                                        <tr><td style={{textAlign: 'left'}}>ELFA % of Licensed</td><td>{selectedDistrictSupply.totalCap > 0 ? Math.round(selectedDistrictSupply.elfaCap / selectedDistrictSupply.totalCap * 100) + '%' : '-'}</td></tr>
+                                        <tr><td style={{textAlign: 'left'}}>Infant/Toddler Slots</td><td>{selectedDistrictSupply.infantCap.toLocaleString()}</td></tr>
+                                        <tr><td style={{textAlign: 'left'}}>Children Under 6</td><td>{(selectedDistrictDemand.under3 + selectedDistrictDemand.age3_4 + selectedDistrictDemand.age5).toLocaleString()}</td></tr>
+                                        <tr><td style={{textAlign: 'left'}}>HH &le;110% AMI</td><td>{selectedDistrictDemand.le110.toLocaleString()}</td></tr>
+                                        <tr><td style={{textAlign: 'left'}}>HH &le;200% AMI</td><td>{(selectedDistrictDemand.le110 + selectedDistrictDemand.b110_150 + selectedDistrictDemand.b150_200).toLocaleString()}</td></tr>
+                                        <tr><td style={{textAlign: 'left'}}>Slots per Child</td><td>{(() => { const u6 = selectedDistrictDemand.under3 + selectedDistrictDemand.age3_4 + selectedDistrictDemand.age5; return u6 > 0 ? (selectedDistrictSupply.totalCap / u6).toFixed(2) : '-'; })()}</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <h3>All Districts &mdash; Licensed Supply vs Eligible Households</h3>
+                            <div className="landscape-chart-wrap">
+                                <div className="chart-subtitle">District {selectedDistrict} highlighted &mdash; eligibility does not equal demand</div>
+                                <div style={{height: '380px'}}>
+                                    <canvas ref={landscapeChartRef} className="landscape-chart-canvas"></canvas>
+                                </div>
+                            </div>
+                        </>}
+
+                        {/* ===== CORRIDOR VIEW ===== */}
+                        {geoView === 'corridor' && <>
+                            <h3>All Corridors &mdash; Licensed Supply vs Eligible Households</h3>
+                            <div className="landscape-chart-wrap">
+                                <div className="chart-subtitle">Side-by-side comparison of all four corridors</div>
+                                <div style={{height: '320px'}}>
+                                    <canvas ref={overviewChartRef} className="landscape-chart-canvas"></canvas>
+                                </div>
+                            </div>
+
+                            <div className="landscape-table-wrap" style={{marginBottom: '24px'}}>
+                                <table className="landscape-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Corridor</th>
+                                            <th>Districts</th>
+                                            <th>Licensed Capacity</th>
+                                            <th>ELFA Capacity</th>
+                                            <th>ELFA %</th>
+                                            <th>Children Under 6</th>
+                                            <th>Slots per Child</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                                <tfoot>
-                                    <tr>
-                                        <td>Citywide</td>
-                                        <td>1&ndash;11</td>
-                                        <td>{zipSupplyTotals.count.toLocaleString()}</td>
-                                        <td>{zipSupplyTotals.totalCap.toLocaleString()}</td>
-                                        <td>{zipSupplyTotals.elfaCap.toLocaleString()}</td>
-                                        <td>{zipSupplyTotals.totalCap > 0 ? Math.round(zipSupplyTotals.elfaCap / zipSupplyTotals.totalCap * 100) : 0}%</td>
-                                        <td>{zipDemandTotals.under6?.toLocaleString()}</td>
-                                        <td>{zipDemandTotals.le110.toLocaleString()}</td>
-                                        <td>{(zipDemandTotals.le110 + zipDemandTotals.b110_150 + zipDemandTotals.b150_200).toLocaleString()}</td>
-                                        <td>{zipDemandTotals.under6 > 0 ? (zipSupplyTotals.totalCap / zipDemandTotals.under6).toFixed(2) : '-'}</td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-
-                        <h3>Licensed Supply vs Eligible Households by ZIP</h3>
-                        <div className="landscape-chart-wrap">
-                            <div className="chart-subtitle">Stacked bars compare licensed capacity (ELFA + non-ELFA) against ELFA-eligible households by ZIP code</div>
-                            <div style={{height: '400px'}}>
-                                <canvas ref={zipChartRef} className="landscape-chart-canvas"></canvas>
+                                    </thead>
+                                    <tbody>
+                                        {allCorridorsTotals.map(c => {
+                                            const elfaPct = c.supply.totalCap > 0 ? Math.round(c.supply.elfaCap / c.supply.totalCap * 100) : 0;
+                                            const spc = c.demand.under6 > 0 ? (c.supply.totalCap / c.demand.under6).toFixed(2) : '-';
+                                            return <tr key={c.name} style={{cursor: 'pointer'}} onClick={() => setCorridor(c.name)}
+                                                title={'Click to view ' + c.name + ' detail below'}>
+                                                <td>{c.name}</td>
+                                                <td style={{fontWeight: 400}}>D{c.dists.join(', D')}</td>
+                                                <td>{c.supply.totalCap.toLocaleString()}</td>
+                                                <td>{c.supply.elfaCap.toLocaleString()}</td>
+                                                <td>{elfaPct}%</td>
+                                                <td>{c.demand.under6.toLocaleString()}</td>
+                                                <td>{spc}</td>
+                                            </tr>;
+                                        })}
+                                    </tbody>
+                                </table>
                             </div>
-                        </div>
+                            <div className="landscape-footnote" style={{marginBottom: '28px'}}>Click a corridor row above to jump to its detail below.</div>
+
+                            <h3 style={{marginTop: '32px', paddingTop: '24px', borderTop: '2px solid #e0e0e0'}}>Corridor Detail</h3>
+
+                            <div className="sub-selector">
+                                {Object.entries(CORRIDORS).map(([name, dists]) => (
+                                    <button key={name} className={`geo-btn ${corridor === name ? 'active' : ''}`}
+                                        onClick={() => setCorridor(name)} style={{padding: '7px 14px', fontSize: '12px'}}>
+                                        {name} <span className="corridor-dists">(D{dists.join(', D')})</span>
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="landscape-cards">
+                                <div className="landscape-card">
+                                    <div className="lc-value">{corridorSupplyTotals.totalCap.toLocaleString()}</div>
+                                    <div className="lc-label">Licensed Slots</div>
+                                    <div className="lc-context">{corridor} corridor</div>
+                                </div>
+                                <div className="landscape-card">
+                                    <div className="lc-value">{corridorSupplyTotals.elfaCap.toLocaleString()}</div>
+                                    <div className="lc-label">ELFA Contracted</div>
+                                    <div className="lc-context">{corridorSupplyTotals.totalCap > 0 ? Math.round(corridorSupplyTotals.elfaCap / corridorSupplyTotals.totalCap * 100) : 0}% of corridor capacity</div>
+                                </div>
+                                <div className="landscape-card">
+                                    <div className="lc-value">{corridorDemandTotals.under6?.toLocaleString()}</div>
+                                    <div className="lc-label">Children Under 6</div>
+                                    <div className="lc-context">All incomes in corridor</div>
+                                </div>
+                                <div className="landscape-card">
+                                    <div className="lc-value">{corridorDemandTotals.under6 > 0 ? (corridorSupplyTotals.totalCap / corridorDemandTotals.under6).toFixed(2) : '-'}</div>
+                                    <div className="lc-label">Slots per Child</div>
+                                    <div className="lc-context">Licensed slots / children under 6</div>
+                                </div>
+                            </div>
+
+                            <h3>{corridor} &mdash; Licensed Supply by District</h3>
+                            <div className="landscape-table-wrap">
+                                <table className="landscape-table">
+                                    <thead>
+                                        <tr>
+                                            <th>District</th>
+                                            <th>Licensed Capacity</th>
+                                            <th>ELFA Capacity</th>
+                                            <th>ELFA %</th>
+                                            <th>All Children Under 6</th>
+                                            <th>Slots per Child</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {corridorDemand.map(d => {
+                                            const supply = supplyByDistrict[d.district] || {};
+                                            const under6 = d.under3 + d.age3_4 + d.age5;
+                                            const slotsPerChild = under6 > 0 ? (supply.totalCap / under6).toFixed(2) : '-';
+                                            const elfaPct = supply.totalCap > 0 ? Math.round((supply.elfaCap || 0) / supply.totalCap * 100) : 0;
+                                            return <tr key={d.district}>
+                                                <td>District {d.district}</td>
+                                                <td>{(supply.totalCap || 0).toLocaleString()}</td>
+                                                <td>{(supply.elfaCap || 0).toLocaleString()}</td>
+                                                <td>{elfaPct}%</td>
+                                                <td>{under6.toLocaleString()}</td>
+                                                <td>{slotsPerChild}</td>
+                                            </tr>;
+                                        })}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td>{corridor} Total</td>
+                                            <td>{corridorSupplyTotals.totalCap.toLocaleString()}</td>
+                                            <td>{corridorSupplyTotals.elfaCap.toLocaleString()}</td>
+                                            <td>{corridorSupplyTotals.totalCap > 0 ? Math.round(corridorSupplyTotals.elfaCap / corridorSupplyTotals.totalCap * 100) : 0}%</td>
+                                            <td>{corridorDemandTotals.under6?.toLocaleString()}</td>
+                                            <td>{corridorDemandTotals.under6 > 0 ? (corridorSupplyTotals.totalCap / corridorDemandTotals.under6).toFixed(2) : '-'}</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+
+                            <h3>{corridor} &mdash; Licensed Supply vs Eligible Households</h3>
+                            <div className="landscape-chart-wrap">
+                                <div className="chart-subtitle">Stacked bars compare licensed capacity (ELFA + non-ELFA) against ELFA-eligible households by district</div>
+                                <div style={{height: '300px'}}>
+                                    <canvas ref={corridorChartRef} className="landscape-chart-canvas"></canvas>
+                                </div>
+                            </div>
+                        </>}
+
+                        {/* ===== ZIP CODE VIEW ===== */}
+                        {geoView === 'zip' && <>
+                            <div className="sub-selector">
+                                <select value={selectedZip} onChange={e => setSelectedZip(e.target.value)}
+                                    style={{padding: '9px 14px', borderRadius: '20px', border: '1px solid #ddd', fontSize: '13px', fontWeight: 600, cursor: 'pointer'}}>
+                                    {ZIP_DEMAND_DATA.map(z => (
+                                        <option key={z.zip} value={z.zip}>{z.zip}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="landscape-cards">
+                                <div className="landscape-card">
+                                    <div className="lc-value">{selectedZipSupply.totalCap.toLocaleString()}</div>
+                                    <div className="lc-label">Licensed Slots</div>
+                                    <div className="lc-context">ZIP {selectedZip}</div>
+                                </div>
+                                <div className="landscape-card">
+                                    <div className="lc-value">{selectedZipSupply.elfaCap.toLocaleString()}</div>
+                                    <div className="lc-label">ELFA Contracted</div>
+                                    <div className="lc-context">{selectedZipSupply.totalCap > 0 ? Math.round(selectedZipSupply.elfaCap / selectedZipSupply.totalCap * 100) : 0}% of ZIP capacity</div>
+                                </div>
+                                <div className="landscape-card">
+                                    <div className="lc-value">{selectedZipSupply.count}</div>
+                                    <div className="lc-label">Facilities</div>
+                                    <div className="lc-context">Licensed facilities in ZIP</div>
+                                </div>
+                                <div className="landscape-card">
+                                    <div className="lc-value">{(selectedZipDemand.under3 + selectedZipDemand.age3_4 + selectedZipDemand.age5).toLocaleString()}</div>
+                                    <div className="lc-label">Children Under 6</div>
+                                    <div className="lc-context">All incomes</div>
+                                </div>
+                                <div className="landscape-card">
+                                    <div className="lc-value">{(() => { const u6 = selectedZipDemand.under3 + selectedZipDemand.age3_4 + selectedZipDemand.age5; return u6 > 0 ? (selectedZipSupply.totalCap / u6).toFixed(2) : '-'; })()}</div>
+                                    <div className="lc-label">Slots per Child</div>
+                                    <div className="lc-context">Licensed slots / children under 6</div>
+                                </div>
+                            </div>
+
+                            <h3>All ZIP Codes &mdash; Licensed Supply vs Demand</h3>
+                            <div className="landscape-table-wrap">
+                                <table className="landscape-table">
+                                    <thead>
+                                        <tr>
+                                            <th style={{cursor:'pointer'}} onClick={() => handleZipSort('zip')}>ZIP{zipSortArrow('zip')}</th>
+                                            <th style={{cursor:'pointer'}} onClick={() => handleZipSort('districts')}>District(s){zipSortArrow('districts')}</th>
+                                            <th style={{cursor:'pointer'}} onClick={() => handleZipSort('facilities')}>Facilities{zipSortArrow('facilities')}</th>
+                                            <th style={{cursor:'pointer'}} onClick={() => handleZipSort('totalCap')}>Licensed Cap.{zipSortArrow('totalCap')}</th>
+                                            <th style={{cursor:'pointer'}} onClick={() => handleZipSort('elfaCap')}>ELFA Cap.{zipSortArrow('elfaCap')}</th>
+                                            <th style={{cursor:'pointer'}} onClick={() => handleZipSort('elfaPct')}>ELFA %{zipSortArrow('elfaPct')}</th>
+                                            <th style={{cursor:'pointer'}} onClick={() => handleZipSort('under6')}>Children &lt;6{zipSortArrow('under6')}</th>
+                                            <th style={{cursor:'pointer'}} onClick={() => handleZipSort('le110')}>HH &le;110%{zipSortArrow('le110')}</th>
+                                            <th style={{cursor:'pointer'}} onClick={() => handleZipSort('le200')}>HH &le;200%{zipSortArrow('le200')}</th>
+                                            <th style={{cursor:'pointer'}} onClick={() => handleZipSort('slotsPerChild')}>Slots/Child{zipSortArrow('slotsPerChild')}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {zipTableData.map(row => (
+                                            <tr key={row.zip} className={row.zip === selectedZip ? 'row-highlighted' : ''}
+                                                style={{cursor: 'pointer'}} onClick={() => setSelectedZip(row.zip)}>
+                                                <td>{row.zip}</td>
+                                                <td>{row.districts}</td>
+                                                <td>{row.facilities.toLocaleString()}</td>
+                                                <td>{row.totalCap.toLocaleString()}</td>
+                                                <td>{row.elfaCap.toLocaleString()}</td>
+                                                <td>{row.elfaPct}%</td>
+                                                <td>{row.under6.toLocaleString()}</td>
+                                                <td>{row.le110.toLocaleString()}</td>
+                                                <td>{row.le200.toLocaleString()}</td>
+                                                <td>{row.slotsPerChild > 0 ? row.slotsPerChild.toFixed(2) : '-'}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td>Citywide</td>
+                                            <td>1&ndash;11</td>
+                                            <td>{zipSupplyTotals.count.toLocaleString()}</td>
+                                            <td>{zipSupplyTotals.totalCap.toLocaleString()}</td>
+                                            <td>{zipSupplyTotals.elfaCap.toLocaleString()}</td>
+                                            <td>{zipSupplyTotals.totalCap > 0 ? Math.round(zipSupplyTotals.elfaCap / zipSupplyTotals.totalCap * 100) : 0}%</td>
+                                            <td>{zipDemandTotals.under6?.toLocaleString()}</td>
+                                            <td>{zipDemandTotals.le110.toLocaleString()}</td>
+                                            <td>{(zipDemandTotals.le110 + zipDemandTotals.b110_150 + zipDemandTotals.b150_200).toLocaleString()}</td>
+                                            <td>{zipDemandTotals.under6 > 0 ? (zipSupplyTotals.totalCap / zipDemandTotals.under6).toFixed(2) : '-'}</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+
+                            <h3>Licensed Supply vs Eligible Households by ZIP</h3>
+                            <div className="landscape-chart-wrap">
+                                <div className="chart-subtitle">Stacked bars compare licensed capacity (ELFA + non-ELFA) against ELFA-eligible households by ZIP code</div>
+                                <div style={{height: '400px'}}>
+                                    <canvas ref={zipChartRef} className="landscape-chart-canvas"></canvas>
+                                </div>
+                            </div>
+                        </>}
                     </div>
-                    {/* ==================== END ZIP CODE ANALYSIS ==================== */}
+                    {/* ==================== END SUPPLY & DEMAND ==================== */}
 
                 </div>
 
