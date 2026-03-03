@@ -1,0 +1,1504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SF Child Care Dashboard</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; }
+
+        /* Header */
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .header-content { max-width: 1600px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .header h1 { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+        .header p { font-size: 13px; opacity: 0.9; }
+        .header-stats { display: flex; gap: 12px; flex-wrap: wrap; }
+        .stat-pill { background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); padding: 8px 16px; border-radius: 20px; text-align: center; min-width: 100px; }
+        .stat-value { font-size: 18px; font-weight: 700; }
+        .stat-label { font-size: 11px; opacity: 0.9; text-transform: uppercase; }
+        .help-icon { background: rgba(255,255,255,0.2); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-weight: bold; }
+
+        /* Layout */
+        .container { max-width: 1600px; margin: 0 auto; padding: 20px; }
+        .grid { display: grid; grid-template-columns: 280px 1fr 320px; gap: 20px; margin-bottom: 20px; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+
+        /* Sidebar */
+        .sidebar { position: sticky; top: 20px; }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid #e0e0e0; }
+        .sidebar h2 { font-size: 16px; margin-bottom: 12px; }
+        .search-box { width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; }
+        .search-box:focus { outline: none; border-color: #667eea; }
+
+        /* Active Filters */
+        .active-filters { padding: 12px 20px; border-bottom: 1px solid #e0e0e0; max-height: 200px; overflow-y: auto; }
+        .active-filters-header { font-size: 11px; font-weight: 600; text-transform: uppercase; color: #999; margin-bottom: 8px; }
+        .filter-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+        .filter-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 16px; font-size: 12px; }
+        .filter-chip-close { cursor: pointer; font-weight: bold; font-size: 14px; line-height: 1; opacity: 0.8; }
+        .filter-chip-close:hover { opacity: 1; }
+        .clear-all-btn { padding: 6px 12px; background: #f44336; color: white; border: none; border-radius: 16px; font-size: 11px; cursor: pointer; font-weight: 600; }
+        .clear-all-btn:hover { background: #d32f2f; }
+
+        /* Filters */
+        .filter-section { border-bottom: 1px solid #f0f0f0; }
+        .filter-header { padding: 16px 20px; cursor: pointer; display: flex; justify-content: space-between; }
+        .filter-header:hover { background: #f9f9f9; }
+        .filter-title { font-size: 13px; font-weight: 600; text-transform: uppercase; color: #555; }
+        .filter-arrow { font-size: 12px; transition: transform 0.3s; color: #999; }
+        .filter-arrow.open { transform: rotate(180deg); }
+        .filter-content { max-height: 0; overflow: hidden; transition: max-height 0.3s; }
+        .filter-content.open { max-height: 400px; overflow-y: auto; }
+        .filter-body { padding: 0 20px 16px; }
+        .filter-option { display: flex; align-items: center; padding: 8px 0; cursor: pointer; }
+        .filter-option input { margin-right: 10px; cursor: pointer; }
+        .filter-option label { font-size: 13px; cursor: pointer; flex: 1; }
+        .filter-count { font-size: 11px; color: #999; background: #f0f0f0; padding: 2px 8px; border-radius: 10px; }
+        .capacity-inputs { display: flex; gap: 10px; }
+        .capacity-input { flex: 1; }
+        .capacity-input label { display: block; font-size: 11px; color: #666; margin-bottom: 4px; }
+        .capacity-input input { width: 100%; padding: 8px; border: 1px solid #e0e0e0; border-radius: 6px; }
+
+        /* Map */
+        .map-header { padding: 20px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center; }
+        .map-title { font-size: 18px; font-weight: 600; }
+        .map-controls { display: flex; gap: 8px; }
+        .btn { padding: 8px 14px; background: #f5f5f5; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 12px; cursor: pointer; }
+        .btn:hover { background: #e8e8e8; }
+        .btn.active { background: #667eea; color: white; border-color: #667eea; }
+        #map { height: 600px; width: 100%; }
+        .map-note { padding: 12px 20px; background: #fff3cd; border-top: 1px solid #ffc107; font-size: 12px; color: #856404; }
+
+        /* Map Legend */
+        .map-legend { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); font-size: 12px; line-height: 1.8; }
+        .map-legend h4 { margin: 0 0 8px 0; font-size: 13px; font-weight: 600; }
+        .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+        .legend-color { width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; }
+        .legend-color.bordered { border-color: #FFA500; }
+
+        /* Stats */
+        .stats-card { padding: 20px; margin-bottom: 20px; }
+        .stats-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 16px; color: #555; text-transform: uppercase; }
+        .stat-item { margin-bottom: 16px; }
+        .stat-item-label { font-size: 12px; color: #666; margin-bottom: 6px; }
+        .stat-row { display: flex; align-items: center; gap: 10px; }
+        .stat-num { font-size: 20px; font-weight: 700; min-width: 80px; }
+        .progress-bar { flex: 1; height: 8px; background: #e0e0e0; border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); transition: width 0.3s; }
+        .chart-container { height: 200px; }
+
+        /* Facilities */
+        .facilities-header { display: flex; justify-content: space-between; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid #f0f0f0; }
+        .facilities-header h2 { font-size: 18px; }
+        .facility-card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+        .facility-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-color: #667eea; }
+        .facility-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .facility-name { font-size: 15px; font-weight: 600; flex: 1; }
+        .badges { display: flex; gap: 6px; }
+        .badge { font-size: 10px; padding: 4px 8px; border-radius: 12px; font-weight: 600; text-transform: uppercase; }
+        .badge-licensed { background: #d4edda; color: #155724; }
+        .badge-closed { background: #f8d7da; color: #721c24; }
+        .badge-elfa { background: #e7d4f5; color: #5a1c7d; }
+        .badge-sfusd { background: #d1c4e9; color: #4a148c; }
+        .badge-headstart { background: #fff3e0; color: #e65100; }
+        .badge-cspp { background: #e8f5e9; color: #2e7d32; }
+        .badge-cctr { background: #c8e6c9; color: #2e7d32; }
+        .badge-prek { background: #e1bee7; color: #6a1b9a; }
+        .badge-tk { background: #b39ddb; color: #4a148c; }
+        .facility-details { font-size: 13px; color: #666; line-height: 1.6; }
+        .facility-capacity { display: inline-block; margin-top: 8px; padding: 4px 10px; background: #f0f0f0; border-radius: 6px; font-size: 12px; font-weight: 600; }
+
+        /* Pagination */
+        .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e0e0e0; }
+        .page-btn { padding: 8px 14px; background: white; border: 1px solid #e0e0e0; border-radius: 6px; cursor: pointer; }
+        .page-btn:hover { background: #f5f5f5; }
+        .page-btn.active { background: #667eea; color: white; border-color: #667eea; }
+        .page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Modal */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10000; }
+        .modal { background: white; border-radius: 12px; padding: 30px; max-width: 600px; max-height: 80vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+        .modal-header h2 { font-size: 20px; }
+        .modal-close { cursor: pointer; font-size: 24px; color: #999; background: none; border: none; }
+        .modal-section { margin-bottom: 24px; }
+        .modal-section h3 { font-size: 16px; margin-bottom: 12px; color: #667eea; }
+        .modal-section p { font-size: 14px; line-height: 1.6; color: #666; }
+        .modal-section ul { margin-left: 20px; }
+        .modal-section li { font-size: 14px; line-height: 1.8; }
+        .modal-section a { color: #667eea; text-decoration: none; }
+
+        /* Tab bar */
+        .tab-bar {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            gap: 0;
+            background: white;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .tab-btn {
+            padding: 14px 28px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #777;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            transition: color 0.2s, border-color 0.2s;
+            margin-bottom: -2px;
+        }
+        .tab-btn:hover { color: #444; }
+        .tab-btn.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        /* Loading */
+        .loading { display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; gap: 20px; }
+        .spinner { width: 60px; height: 60px; border: 6px solid #f3f3f3; border-top: 6px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* ========== Child Care Landscape Panel ========== */
+        .landscape-panel { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 30px; margin-bottom: 20px; }
+        .landscape-panel h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; color: #333; }
+        .landscape-panel h3 { font-size: 16px; font-weight: 600; margin: 24px 0 12px; color: #444; }
+
+        /* Two-column supply/demand layout */
+        .supply-demand-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 28px;
+        }
+        .sd-column { min-width: 0; }
+        .sd-column h3 { margin-top: 0; font-size: 15px; text-transform: uppercase; letter-spacing: 0.5px; padding-bottom: 8px; border-bottom: 2px solid #e0e0e0; }
+        .sd-column h3.supply-heading { color: #4285f4; border-color: #4285f4; }
+        .sd-column h3.demand-heading { color: #1B6B4A; border-color: #1B6B4A; }
+        .sd-column h4 { font-size: 13px; font-weight: 600; color: #555; margin: 16px 0 8px; }
+
+        .landscape-disclaimer {
+            background: #e8f0fe;
+            border-left: 4px solid #4285f4;
+            padding: 14px 18px;
+            border-radius: 0 8px 8px 0;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #333;
+            margin-bottom: 24px;
+        }
+
+        .care-arrangement {
+            background: #fafafa;
+            border: 1px solid #e8e8e8;
+            border-radius: 10px;
+            padding: 20px 24px;
+            margin-bottom: 24px;
+        }
+        .care-arrangement h3 { margin-top: 0; color: #555; }
+        .care-arrangement ul { list-style: none; padding: 0; margin: 0 0 12px 0; }
+        .care-arrangement li { padding: 6px 0; font-size: 14px; color: #444; }
+        .care-arrangement li::before { content: "\2022"; color: #667eea; font-weight: bold; display: inline-block; width: 16px; }
+        .care-arrangement .context-note { font-size: 12px; color: #777; line-height: 1.5; font-style: italic; }
+
+        .landscape-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+        .landscape-card {
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 18px;
+            text-align: center;
+        }
+        .landscape-card .lc-value { font-size: 28px; font-weight: 700; color: #333; margin-bottom: 4px; }
+        .landscape-card .lc-label { font-size: 13px; font-weight: 600; color: #555; margin-bottom: 8px; }
+        .landscape-card .lc-context { font-size: 11px; color: #888; line-height: 1.4; }
+
+        .landscape-table-wrap { overflow-x: auto; margin-bottom: 8px; }
+        .landscape-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .landscape-table th {
+            background: #f0f0f0;
+            padding: 10px 12px;
+            text-align: right;
+            font-weight: 600;
+            color: #555;
+            border-bottom: 2px solid #ddd;
+            white-space: nowrap;
+        }
+        .landscape-table th:first-child { text-align: left; }
+        .landscape-table td {
+            padding: 9px 12px;
+            text-align: right;
+            border-bottom: 1px solid #eee;
+        }
+        .landscape-table td:first-child { text-align: left; font-weight: 600; }
+        .landscape-table tr:hover { background: #f9f9ff; }
+        .landscape-table tfoot td { font-weight: 700; border-top: 2px solid #ddd; background: #fafafa; }
+
+
+        .landscape-footnote {
+            font-size: 11px;
+            color: #888;
+            line-height: 1.5;
+            margin-top: 8px;
+            margin-bottom: 24px;
+            font-style: italic;
+        }
+
+        .landscape-chart-wrap {
+            margin-bottom: 28px;
+        }
+        .landscape-chart-wrap .chart-subtitle {
+            font-size: 12px;
+            color: #888;
+            font-style: italic;
+            margin-top: -8px;
+            margin-bottom: 12px;
+        }
+        .landscape-chart-canvas {
+            width: 100% !important;
+            max-height: 400px;
+        }
+
+        /* AMI stacked bars */
+        .ami-bars-section { margin-bottom: 12px; }
+        .ami-bar-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            font-size: 13px;
+        }
+        .ami-bar-label {
+            width: 80px;
+            font-weight: 600;
+            color: #555;
+            flex-shrink: 0;
+        }
+        .ami-bar-track {
+            flex: 1;
+            height: 26px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            display: flex;
+            overflow: visible;
+            position: relative;
+        }
+        .ami-bar-seg {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 600;
+            color: white;
+            white-space: nowrap;
+            overflow: hidden;
+            min-width: 0;
+        }
+        .ami-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            margin-bottom: 14px;
+            font-size: 12px;
+        }
+        .ami-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .ami-legend-swatch {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
+
+        /* Responsive */
+        @media (max-width: 1024px) { .grid { grid-template-columns: 1fr; } .sidebar { position: static; } .supply-demand-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) { .header-content { flex-direction: column; align-items: flex-start; } #map { height: 400px; } .landscape-cards { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 480px) { .landscape-cards { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script>
+        // Load data from external JSON
+        window.CHILDCARE_DATA = null;
+        fetch('./childcare_all_coordinates.json')
+            .then(r => r.json())
+            .then(d => {
+                window.CHILDCARE_DATA = d;
+                const withCoords = d.filter(f => f.latitude && f.longitude).length;
+                const jittered = d.filter(f => f.tags?.address_source === 'zip_code_approximate').length;
+                console.log('Loaded', d.length, 'facilities,', withCoords, 'have coordinates (' + jittered + ' jittered from ZIP codes)');
+                if (window.onDataLoad) window.onDataLoad();
+            })
+            .catch(e => alert('Error loading data. Run a local server (see instructions) or use standalone version.'));
+
+        // Load district boundaries GeoJSON
+        window.DISTRICT_GEO = null;
+        fetch('./sf_districts.geojson')
+            .then(r => r.json())
+            .then(d => {
+                window.DISTRICT_GEO = d;
+                console.log('Loaded', d.features.length, 'district boundaries');
+                if (window.onDistrictGeoLoad) window.onDistrictGeoLoad();
+            })
+            .catch(e => console.warn('District boundaries not loaded:', e));
+
+        // Child population and AMI data by Supervisor District
+        // Source: ACS 2020-2024 5-year, MOHCD 2025 AMI thresholds, DataSF Districts
+        // HH counts: S1101_C01_005E * (S1101_C01_006E + S1101_C01_007E) / 100 = HH with children under 6
+        // Children: B09001 age groups (all incomes)
+        const DEMAND_DATA = [
+            { district: 1,  total_hh: 2301, le110: 1055, b110_150: 278, b150_200: 239, gt200:  730, under3: 1902, age3_4: 1143, age5: 412 },
+            { district: 2,  total_hh: 2186, le110:  838, b110_150: 245, b150_200: 249, gt200:  854, under3: 2078, age3_4: 1303, age5: 393 },
+            { district: 3,  total_hh: 1281, le110:  741, b110_150: 122, b150_200: 102, gt200:  316, under3: 1012, age3_4: 818,  age5: 219 },
+            { district: 4,  total_hh: 2314, le110: 1077, b110_150: 300, b150_200: 242, gt200:  693, under3: 1844, age3_4: 1122, age5: 678 },
+            { district: 5,  total_hh: 1699, le110:  836, b110_150: 178, b150_200: 154, gt200:  531, under3: 1558, age3_4: 742,  age5: 343 },
+            { district: 6,  total_hh: 2332, le110:  977, b110_150: 236, b150_200: 234, gt200:  886, under3: 1987, age3_4: 1275, age5: 312 },
+            { district: 7,  total_hh: 2810, le110: 1206, b110_150: 312, b150_200: 306, gt200:  986, under3: 2327, age3_4: 1226, age5: 632 },
+            { district: 8,  total_hh: 2873, le110: 1101, b110_150: 301, b150_200: 315, gt200: 1155, under3: 2317, age3_4: 1235, age5: 506 },
+            { district: 9,  total_hh: 2285, le110: 1064, b110_150: 264, b150_200: 232, gt200:  726, under3: 2076, age3_4: 1136, age5: 568 },
+            { district: 10, total_hh: 2205, le110: 1267, b110_150: 222, b150_200: 179, gt200:  536, under3: 2122, age3_4: 1206, age5: 626 },
+            { district: 11, total_hh: 2384, le110: 1255, b110_150: 295, b150_200: 232, gt200:  601, under3: 2527, age3_4: 1166, age5: 912 }
+        ];
+    </script>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo, useCallback } = React;
+
+        const App = () => {
+            const [data, setData] = useState([]);
+            const [search, setSearch] = useState('');
+            const [open, setOpen] = useState('type');
+            const [typeF, setTypeF] = useState([]);
+            const [statusF, setStatusF] = useState(['LICENSED']);
+            const [elfaF, setElfaF] = useState([]);
+            const [minCap, setMinCap] = useState('');
+            const [maxCap, setMaxCap] = useState('');
+            const [sfusdOnly, setSfusdOnly] = useState(false);
+            const [prekOnly, setPrekOnly] = useState(false);
+            const [tkOnly, setTkOnly] = useState(false);
+            const [headStartOnly, setHeadStartOnly] = useState(false);
+            const [csppOnly, setCsppOnly] = useState(false);
+            const [cctrOnly, setCctrOnly] = useState(false);
+            const [districtF, setDistrictF] = useState([]);
+            const [heatmap, setHeatmap] = useState(true);
+            const [markers, setMarkers] = useState(true);
+            const [modal, setModal] = useState(false);
+            const [page, setPage] = useState(1);
+            const [tab, setTab] = useState('landscape');
+            const [mapBoundsFilter, setMapBoundsFilter] = useState(false);
+            const [currentBounds, setCurrentBounds] = useState(null);
+            const perPage = 25;
+
+            const mapRef = useRef(null);
+            const mapInst = useRef(null);
+            const heatLayer = useRef(null);
+            const markerLayer = useRef(null);
+            const chartRef = useRef(null);
+            const chartInst = useRef(null);
+            const landscapeChartRef = useRef(null);
+            const landscapeChartInst = useRef(null);
+            const supplyChartRef = useRef(null);
+            const supplyChartInst = useRef(null);
+            const districtMapRef = useRef(null);
+            const districtMapInst = useRef(null);
+            const [districtGeo, setDistrictGeo] = useState(null);
+
+            useEffect(() => {
+                if (window.CHILDCARE_DATA) {
+                    setData(window.CHILDCARE_DATA);
+                } else {
+                    window.onDataLoad = () => setData(window.CHILDCARE_DATA);
+                }
+                if (window.DISTRICT_GEO) {
+                    setDistrictGeo(window.DISTRICT_GEO);
+                } else {
+                    window.onDistrictGeoLoad = () => setDistrictGeo(window.DISTRICT_GEO);
+                }
+            }, []);
+
+            const types = useMemo(() => {
+                const uniqueTypes = [...new Set(data.map(f => f.facility_type))];
+                return uniqueTypes.sort((a, b) => {
+                    const aIsFamily = a.includes('FAMILY CHILD CARE HOME');
+                    const bIsFamily = b.includes('FAMILY CHILD CARE HOME');
+                    if (aIsFamily === bIsFamily) {
+                        if (aIsFamily) {
+                            if (a.includes('SMALL')) return -1;
+                            if (b.includes('SMALL')) return 1;
+                        }
+                        return a.localeCompare(b);
+                    }
+                    return aIsFamily ? 1 : -1;
+                });
+            }, [data]);
+            const statuses = useMemo(() => [...new Set(data.map(f => f.facility_status))].sort(), [data]);
+            const districts = useMemo(() => {
+                const dists = data.filter(f => f.supervisor_district).map(f => ({
+                    number: f.supervisor_district,
+                    name: f.supervisor_name
+                }));
+                const unique = [...new Map(dists.map(d => [d.number, d])).values()];
+                return unique.sort((a, b) => parseInt(a.number) - parseInt(b.number));
+            }, [data]);
+
+            const filtered = useMemo(() => {
+                let f = [...data];
+                if (search) {
+                    const s = search.toLowerCase();
+                    f = f.filter(x => x.facility_name?.toLowerCase().includes(s) ||
+                                      x.facility_address?.toLowerCase().includes(s) ||
+                                      x.sfusd_school_name?.toLowerCase().includes(s) ||
+                                      String(x.facility_number).includes(s) ||
+                                      String(x.facility_zip).includes(s));
+                }
+                if (typeF.length) f = f.filter(x => typeF.includes(x.facility_type));
+                if (statusF.length) f = f.filter(x => statusF.includes(x.facility_status));
+                if (elfaF.length) f = f.filter(x => elfaF.includes(x.elfa_contracted));
+                if (districtF.length) f = f.filter(x => {
+                    if (districtF.includes('none')) {
+                        return districtF.includes(x.supervisor_district) || !x.supervisor_district;
+                    }
+                    return districtF.includes(x.supervisor_district);
+                });
+                if (minCap) f = f.filter(x => (x.facility_capacity || 0) >= parseInt(minCap));
+                if (maxCap) f = f.filter(x => (x.facility_capacity || 0) <= parseInt(maxCap));
+                if (sfusdOnly) f = f.filter(x => x.sfusd_site === 'Yes');
+                if (prekOnly) f = f.filter(x => x.prek_program);
+                if (tkOnly) f = f.filter(x => x.tk_program);
+                if (headStartOnly) f = f.filter(x => x.head_start_program);
+                if (csppOnly) f = f.filter(x => x.cspp_program);
+                if (cctrOnly) f = f.filter(x => x.cctr_contractor);
+                if (mapBoundsFilter && currentBounds) {
+                    f = f.filter(x => {
+                        if (!x.latitude || !x.longitude) return false;
+                        return currentBounds.contains([x.latitude, x.longitude]);
+                    });
+                }
+                return f;
+            }, [data, search, typeF, statusF, elfaF, districtF, minCap, maxCap, sfusdOnly, prekOnly, tkOnly, headStartOnly, csppOnly, cctrOnly, mapBoundsFilter, currentBounds]);
+
+            const stats = useMemo(() => {
+                const cap = filtered.reduce((s, f) => s + (f.facility_capacity || 0), 0);
+                const lic = filtered.filter(f => f.facility_status === 'LICENSED').length;
+                const sfu = filtered.filter(f => f.sfusd_site === 'Yes').length;
+                const cctr = filtered.filter(f => f.cctr_contractor).length;
+                const headStart = filtered.filter(f => f.head_start_program).length;
+                const cspp = filtered.filter(f => f.cspp_program).length;
+                return {
+                    total: filtered.length,
+                    cap: cap,
+                    lic: lic,
+                    licPct: filtered.length > 0 ? Math.round((lic / filtered.length) * 100) : 0,
+                    sfu: sfu,
+                    cctr: cctr,
+                    headStart: headStart,
+                    cspp: cspp
+                };
+            }, [filtered]);
+
+            // ===== Supply aggregates for landscape panel (uses full dataset, not filtered) =====
+            const supplyByDistrict = useMemo(() => {
+                const licensed = data.filter(f => f.facility_status === 'LICENSED');
+                const result = {};
+                for (let i = 1; i <= 11; i++) {
+                    const distStr = String(i);
+                    const inDist = licensed.filter(f => f.supervisor_district === distStr);
+                    result[i] = {
+                        totalCap: inDist.reduce((s, f) => s + (f.facility_capacity || 0), 0),
+                        elfaCap: inDist.filter(f => f.elfa_contracted === 'Yes').reduce((s, f) => s + (f.facility_capacity || 0), 0),
+                        infantCap: inDist.filter(f => f.facility_type === 'INFANT CENTER').reduce((s, f) => s + (f.facility_capacity || 0), 0),
+                        count: inDist.length
+                    };
+                }
+                // Citywide totals
+                result.total = {
+                    totalCap: licensed.reduce((s, f) => s + (f.facility_capacity || 0), 0),
+                    elfaCap: licensed.filter(f => f.elfa_contracted === 'Yes').reduce((s, f) => s + (f.facility_capacity || 0), 0),
+                    infantCap: licensed.filter(f => f.facility_type === 'INFANT CENTER').reduce((s, f) => s + (f.facility_capacity || 0), 0),
+                    count: licensed.length
+                };
+                return result;
+            }, [data]);
+
+            const demandTotals = useMemo(() => {
+                const t = { total_hh: 0, le110: 0, b110_150: 0, b150_200: 0, gt200: 0, under3: 0, age3_4: 0, age5: 0 };
+                DEMAND_DATA.forEach(d => {
+                    Object.keys(t).forEach(k => { t[k] += d[k]; });
+                });
+                t.under6 = t.under3 + t.age3_4 + t.age5;
+                return t;
+            }, []);
+
+            const totalPages = Math.ceil(filtered.length / perPage);
+            const paged = useMemo(() => {
+                const start = (page - 1) * perPage;
+                return filtered.slice(start, start + perPage);
+            }, [filtered, page]);
+
+            useEffect(() => { setPage(1); }, [filtered.length]);
+
+            useEffect(() => {
+                if (tab !== 'programs') return;
+                if (!data.length) return;
+                if (!mapRef.current) return;
+                if (mapInst.current) return;
+                try {
+                    const sfBounds = L.latLngBounds(
+                        L.latLng(37.70, -122.52),
+                        L.latLng(37.83, -122.35)
+                    );
+                    const m = L.map(mapRef.current, {
+                        maxBounds: sfBounds,
+                        maxBoundsViscosity: 0.75,
+                        minZoom: 11,
+                        maxZoom: 18
+                    }).setView([37.7749, -122.4194], 12);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; OpenStreetMap contributors'
+                    }).addTo(m);
+                    const legend = L.control({position: 'bottomright'});
+                    legend.onAdd = function() {
+                        const div = L.DomUtil.create('div', 'map-legend');
+                        div.innerHTML = `
+                            <h4>Status</h4>
+                            <div class="legend-item"><div class="legend-color" style="background:#4CAF50;"></div><span>Licensed</span></div>
+                            <div class="legend-item"><div class="legend-color" style="background:#f44336;"></div><span>Closed</span></div>
+                            <div class="legend-item"><div class="legend-color" style="background:#ff9800;"></div><span>Inactive</span></div>
+                            <div class="legend-item"><div class="legend-color" style="background:#2196F3;"></div><span>Other</span></div>
+                            <h4 style="margin-top:8px;">Location</h4>
+                            <div class="legend-item"><div class="legend-color" style="background:#4CAF50; border-color:white;"></div><span>Geocoded</span></div>
+                            <div class="legend-item"><div class="legend-color bordered" style="background:#4CAF50;"></div><span>ZIP-based</span></div>
+                        `;
+                        return div;
+                    };
+                    legend.addTo(m);
+                    mapInst.current = m;
+                    heatLayer.current = L.layerGroup().addTo(m);
+                    markerLayer.current = L.layerGroup().addTo(m);
+                    m.on('moveend zoomend', () => {
+                        if (mapBoundsFilter) {
+                            setCurrentBounds(m.getBounds());
+                        }
+                    });
+                } catch (e) {
+                    console.error('Map initialization failed:', e);
+                }
+            }, [data.length, mapBoundsFilter, tab]);
+
+            useEffect(() => {
+                if (tab !== 'programs' || !mapInst.current) return;
+                heatLayer.current.clearLayers();
+                markerLayer.current.clearLayers();
+                const valid = filtered.filter(f => f.latitude && f.longitude);
+                if (heatmap && valid.length) {
+                    const heat = valid.map(f => [f.latitude, f.longitude, (f.facility_capacity || 10) / 100]);
+                    L.heatLayer(heat, {radius: 25, blur: 15, maxZoom: 17}).addTo(heatLayer.current);
+                }
+                if (markers) {
+                    valid.forEach(f => {
+                        const color = f.facility_status === 'LICENSED' ? '#4CAF50' :
+                                     f.facility_status === 'CLOSED' ? '#f44336' :
+                                     f.facility_status === 'INACTIVE' ? '#ff9800' : '#2196F3';
+                        const isJittered = f.tags?.address_source === 'zip_code_approximate';
+                        const m = L.circleMarker([f.latitude, f.longitude], {
+                            radius: Math.sqrt(f.facility_capacity || 10) * 1.5,
+                            fillColor: color,
+                            color: isJittered ? '#FFA500' : 'white',
+                            weight: 2,
+                            opacity: 1,
+                            fillOpacity: isJittered ? 0.5 : 0.7
+                        });
+                        const addressText = f.facility_address || `ZIP ${f.facility_zip} (approximate)`;
+                        const districtText = f.supervisor_district ? `<br>District ${f.supervisor_district} - ${f.supervisor_name}` : '';
+                        const neighborhoodText = f.neighborhood ? `<br>Neighborhood: ${f.neighborhood}` : '';
+                        m.bindPopup(`<strong>${f.facility_name}</strong><br>License #: ${f.facility_number}<br>Type: ${f.facility_type}<br>${addressText}${districtText}${neighborhoodText}<br>Capacity: ${f.facility_capacity}<br>Status: ${f.facility_status}${f.sfusd_site === 'Yes' ? '<br><strong style="color:#673AB7">SFUSD: ' + f.sfusd_school_name + '</strong>' : ''}${isJittered ? '<br><em style="color:#FF8C00">Location approximate</em>' : ''}`);
+                        m.addTo(markerLayer.current);
+                    });
+                }
+            }, [filtered, heatmap, markers, tab]);
+
+            useEffect(() => {
+                if (tab !== 'programs') return;
+                if (!chartRef.current) return;
+                if (chartInst.current) chartInst.current.destroy();
+                const ranges = ['0-20', '21-50', '51-100', '101-200', '200+'];
+                const counts = ranges.map((r, i) => {
+                    const [min, max] = r.split('-').map(n => n === '200+' ? Infinity : parseInt(n));
+                    return filtered.filter(f => {
+                        const c = f.facility_capacity || 0;
+                        return max === Infinity ? c > min : c >= min && c <= max;
+                    }).length;
+                });
+                chartInst.current = new Chart(chartRef.current, {
+                    type: 'bar',
+                    data: {
+                        labels: ranges,
+                        datasets: [{label: 'Facilities', data: counts, backgroundColor: 'rgba(102,126,234,0.8)'}]
+                    },
+                    options: {responsive: true, maintainAspectRatio: false, plugins: {legend: {display: false}}, scales: {y: {beginAtZero: true}}}
+                });
+            }, [filtered, tab]);
+
+            // ===== Landscape grouped bar chart =====
+            useEffect(() => {
+                if (tab !== 'landscape') return;
+                if (!landscapeChartRef.current || !data.length) return;
+                if (landscapeChartInst.current) landscapeChartInst.current.destroy();
+
+                const labels = DEMAND_DATA.map(d => 'D' + d.district);
+                const elfaCapData = DEMAND_DATA.map(d => supplyByDistrict[d.district]?.elfaCap || 0);
+                const nonElfaCapData = DEMAND_DATA.map(d => {
+                    const s = supplyByDistrict[d.district] || {};
+                    return (s.totalCap || 0) - (s.elfaCap || 0);
+                });
+
+                landscapeChartInst.current = new Chart(landscapeChartRef.current, {
+                    type: 'bar',
+                    data: {
+                        labels,
+                        datasets: [
+                            {
+                                label: 'ELFA Contracted Capacity',
+                                data: elfaCapData,
+                                backgroundColor: '#7b2d8e',
+                                borderColor: '#6a2579',
+                                borderWidth: 1,
+                                stack: 'capacity'
+                            },
+                            {
+                                label: 'Other Licensed Capacity',
+                                data: nonElfaCapData,
+                                backgroundColor: 'rgba(66, 133, 244, 0.7)',
+                                borderColor: 'rgba(66, 133, 244, 1)',
+                                borderWidth: 1,
+                                stack: 'capacity'
+                            },
+                            {
+                                label: 'HH w/ kids <6 \u2264110% AMI (ELFA fully funded)',
+                                data: DEMAND_DATA.map(d => d.le110),
+                                backgroundColor: '#1B6B4A',
+                                borderColor: '#155a3e',
+                                borderWidth: 1,
+                                stack: 'eligible'
+                            },
+                            {
+                                label: 'HH w/ kids <6 110\u2013150% AMI (tuition credit)',
+                                data: DEMAND_DATA.map(d => d.b110_150),
+                                backgroundColor: '#2D8F64',
+                                borderColor: '#247a54',
+                                borderWidth: 1,
+                                stack: 'eligible'
+                            },
+                            {
+                                label: 'HH w/ kids <6 150\u2013200% AMI (expanding 7/1/2026)',
+                                data: DEMAND_DATA.map(d => d.b150_200),
+                                backgroundColor: '#E07B3C',
+                                borderColor: '#c96a30',
+                                borderWidth: 1,
+                                stack: 'eligible'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: { boxWidth: 12, font: { size: 11 } }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(ctx) {
+                                        return ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString();
+                                    },
+                                    afterBody: function(items) {
+                                        const idx = items[0].dataIndex;
+                                        const di = items[0].datasetIndex;
+                                        if (di <= 1) {
+                                            const s = supplyByDistrict[DEMAND_DATA[idx].district] || {};
+                                            return 'Total licensed: ' + (s.totalCap || 0).toLocaleString();
+                                        }
+                                        if (di >= 2 && di <= 4) {
+                                            const d = DEMAND_DATA[idx];
+                                            const total = d.le110 + d.b110_150 + d.b150_200;
+                                            return 'Total ELFA-eligible HH: ' + total.toLocaleString();
+                                        }
+                                        return '';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                stacked: true,
+                                ticks: { callback: v => v.toLocaleString() }
+                            },
+                            x: {
+                                stacked: true
+                            }
+                        }
+                    }
+                });
+            }, [data, supplyByDistrict, tab]);
+
+            // ===== Supply breakdown chart (ELFA vs non-ELFA) =====
+            useEffect(() => {
+                if (tab !== 'landscape') return;
+                if (!supplyChartRef.current || !data.length) return;
+                if (supplyChartInst.current) supplyChartInst.current.destroy();
+
+                const labels = DEMAND_DATA.map(d => 'D' + d.district);
+                const elfaData = DEMAND_DATA.map(d => supplyByDistrict[d.district]?.elfaCap || 0);
+                const nonElfaData = DEMAND_DATA.map(d => {
+                    const s = supplyByDistrict[d.district] || {};
+                    return (s.totalCap || 0) - (s.elfaCap || 0);
+                });
+
+                supplyChartInst.current = new Chart(supplyChartRef.current, {
+                    type: 'bar',
+                    data: {
+                        labels,
+                        datasets: [
+                            {
+                                label: 'ELFA Contracted',
+                                data: elfaData,
+                                backgroundColor: '#7b2d8e',
+                                borderWidth: 0
+                            },
+                            {
+                                label: 'Other Licensed',
+                                data: nonElfaData,
+                                backgroundColor: 'rgba(66, 133, 244, 0.6)',
+                                borderWidth: 0
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        indexAxis: 'y',
+                        plugins: {
+                            legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+                            tooltip: {
+                                callbacks: {
+                                    label: ctx => ctx.dataset.label + ': ' + ctx.parsed.x.toLocaleString(),
+                                    afterBody: function(items) {
+                                        const idx = items[0].dataIndex;
+                                        const s = supplyByDistrict[DEMAND_DATA[idx].district] || {};
+                                        return 'Total: ' + (s.totalCap || 0).toLocaleString();
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: { stacked: true, beginAtZero: true, ticks: { callback: v => v.toLocaleString() } },
+                            y: { stacked: true }
+                        }
+                    }
+                });
+            }, [data, supplyByDistrict, tab]);
+
+            // ===== District reference map =====
+            const DISTRICT_COLORS = [
+                '#4285f4', '#ea4335', '#fbbc04', '#34a853', '#ff6d01',
+                '#46bdc6', '#7baaf7', '#f07b72', '#fcd04f', '#57bb8a', '#e8710a'
+            ];
+
+            useEffect(() => {
+                if (tab !== 'landscape') return;
+                if (!districtGeo || !districtMapRef.current) return;
+                if (districtMapInst.current) return;
+
+                const m = L.map(districtMapRef.current, {
+                    zoomControl: true,
+                    scrollWheelZoom: false,
+                    dragging: true,
+                    minZoom: 11,
+                    maxZoom: 14
+                }).setView([37.7600, -122.4400], 12);
+
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
+                    attribution: '&copy; OpenStreetMap, &copy; CARTO'
+                }).addTo(m);
+
+                L.geoJSON(districtGeo, {
+                    style: feature => {
+                        const d = parseInt(feature.properties.district);
+                        return {
+                            fillColor: DISTRICT_COLORS[d - 1],
+                            fillOpacity: 0.3,
+                            color: DISTRICT_COLORS[d - 1],
+                            weight: 2.5,
+                            opacity: 0.9
+                        };
+                    },
+                    onEachFeature: (feature, layer) => {
+                        const d = feature.properties.district;
+                        const name = feature.properties.name;
+                        const supply = supplyByDistrict[parseInt(d)] || {};
+                        const demand = DEMAND_DATA.find(x => x.district === parseInt(d));
+                        const under6 = demand ? demand.under3 + demand.age3_4 + demand.age5 : 0;
+                        layer.bindPopup(
+                            `<strong>District ${d}</strong><br/>` +
+                            `Supervisor: ${name}<br/>` +
+                            `Licensed capacity: ${(supply.totalCap || 0).toLocaleString()}<br/>` +
+                            `ELFA capacity: ${(supply.elfaCap || 0).toLocaleString()}<br/>` +
+                            `Children under 6: ${under6.toLocaleString()}`
+                        );
+                        // Add district number label — use largest polygon centroid
+                        // to avoid offshore islands (e.g. D4 Farallons) pulling label off-map
+                        const coords = feature.geometry.coordinates;
+                        let mainRing = coords[0][0];
+                        if (coords.length > 1) {
+                            let maxPts = 0;
+                            coords.forEach(poly => {
+                                if (poly[0].length > maxPts) {
+                                    maxPts = poly[0].length;
+                                    mainRing = poly[0];
+                                }
+                            });
+                        }
+                        const avgLat = mainRing.reduce((s, p) => s + p[1], 0) / mainRing.length;
+                        const avgLng = mainRing.reduce((s, p) => s + p[0], 0) / mainRing.length;
+                        const center = L.latLng(avgLat, avgLng);
+                        L.marker(center, {
+                            icon: L.divIcon({
+                                className: '',
+                                html: `<div style="font-size:14px;font-weight:800;color:${DISTRICT_COLORS[parseInt(d)-1]};text-shadow:1px 1px 2px white,-1px -1px 2px white,1px -1px 2px white,-1px 1px 2px white;text-align:center;">${d}</div>`,
+                                iconSize: [24, 24],
+                                iconAnchor: [12, 12]
+                            })
+                        }).addTo(m);
+                    }
+                }).addTo(m);
+
+                districtMapInst.current = m;
+            }, [districtGeo, supplyByDistrict, tab]);
+
+            // Invalidate map sizes when switching tabs
+            useEffect(() => {
+                setTimeout(() => {
+                    if (tab === 'programs' && mapInst.current) {
+                        mapInst.current.invalidateSize();
+                    }
+                    if (tab === 'landscape' && districtMapInst.current) {
+                        districtMapInst.current.invalidateSize();
+                        districtMapInst.current.setView([37.7600, -122.4400], 12);
+                    }
+                }, 50);
+            }, [tab]);
+
+            const toggle = (arr, set, val) => {
+                set(arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val]);
+            };
+
+            const clearAllFilters = () => {
+                setSearch('');
+                setTypeF([]);
+                setStatusF([]);
+                setElfaF([]);
+                setDistrictF([]);
+                setMinCap('');
+                setMaxCap('');
+                setSfusdOnly(false);
+                setPrekOnly(false);
+                setTkOnly(false);
+                setHeadStartOnly(false);
+                setCsppOnly(false);
+                setCctrOnly(false);
+            };
+
+            const activeFilterCount = typeF.length + statusF.length + elfaF.length + districtF.length +
+                                     (minCap ? 1 : 0) + (maxCap ? 1 : 0) + (sfusdOnly ? 1 : 0) + (prekOnly ? 1 : 0) + (tkOnly ? 1 : 0) + (headStartOnly ? 1 : 0) + (csppOnly ? 1 : 0) + (cctrOnly ? 1 : 0) + (search ? 1 : 0);
+
+            // Helper for AMI bar rendering
+            const AMI_COLORS = {
+                le110: '#1B6B4A',
+                b110_150: '#2D8F64',
+                b150_200: '#E07B3C',
+                gt200: '#D9D5CE'
+            };
+
+            if (!data.length) return <div className="loading"><div className="spinner"></div><div>Loading data...</div></div>;
+
+            return <div>
+                <div className="header">
+                        <div className="header-content">
+                            <div>
+                                <h1>SF Child Care Dashboard</h1>
+                                <p>Licensed Centers & Large FCCs - All facilities mapped (some with approximate ZIP-based locations)</p>
+                            </div>
+                            <div className="header-stats">
+                                {tab === 'programs' ? <>
+                                    <div className="stat-pill"><div className="stat-value">{stats.total.toLocaleString()}</div><div className="stat-label">Facilities</div></div>
+                                    <div className="stat-pill"><div className="stat-value">{stats.cap.toLocaleString()}</div><div className="stat-label">Capacity</div></div>
+                                    <div className="stat-pill"><div className="stat-value">{stats.licPct}%</div><div className="stat-label">Licensed</div></div>
+                                    <div className="stat-pill"><div className="stat-value">{stats.sfu}</div><div className="stat-label">SFUSD</div></div>
+                                    <div className="stat-pill"><div className="stat-value">{stats.cctr}</div><div className="stat-label">CCTR</div></div>
+                                    <div className="stat-pill"><div className="stat-value">{stats.cspp}</div><div className="stat-label">CSPP</div></div>
+                                    <div className="stat-pill"><div className="stat-value">{stats.headStart}</div><div className="stat-label">Head Start</div></div>
+                                </> : <>
+                                    <div className="stat-pill"><div className="stat-value">{supplyByDistrict.total?.totalCap?.toLocaleString() || '...'}</div><div className="stat-label">Licensed Slots</div></div>
+                                    <div className="stat-pill"><div className="stat-value">{supplyByDistrict.total?.elfaCap?.toLocaleString() || '...'}</div><div className="stat-label">ELFA Slots</div></div>
+                                    <div className="stat-pill"><div className="stat-value">{supplyByDistrict.total?.totalCap && demandTotals.under6 ? (supplyByDistrict.total.totalCap / demandTotals.under6).toFixed(2) : '...'}</div><div className="stat-label">Slots/Child</div></div>
+                                    <div className="stat-pill"><div className="stat-value">{demandTotals.under6?.toLocaleString()}</div><div className="stat-label">All Children &lt;6</div></div>
+                                </>}
+                                <div className="help-icon" onClick={() => setModal(true)}>?</div>
+                            </div>
+                        </div>
+                </div>
+
+                <div className="tab-bar">
+                    <button className={`tab-btn ${tab === 'landscape' ? 'active' : ''}`} onClick={() => setTab('landscape')}>Supply &amp; Demand</button>
+                    <button className={`tab-btn ${tab === 'programs' ? 'active' : ''}`} onClick={() => setTab('programs')}>Programs &amp; Sites</button>
+                </div>
+
+                <div className="container">
+
+                <div style={{display: tab === 'programs' ? 'block' : 'none'}}>
+                    <div className="grid">
+                        <div className="card sidebar">
+                            <div className="sidebar-header">
+                                <h2>Filters</h2>
+                                <input className="search-box" placeholder="Search by name, address, license #, ZIP..." value={search} onChange={e => setSearch(e.target.value)} />
+                            </div>
+
+                            {activeFilterCount > 0 && (
+                                <div className="active-filters">
+                                    <div className="active-filters-header">Active Filters ({activeFilterCount})</div>
+                                    <div className="filter-chips">
+                                        {search && <div className="filter-chip">Search: "{search}" <span className="filter-chip-close" onClick={() => setSearch('')}>×</span></div>}
+                                        {typeF.map(t => <div key={t} className="filter-chip">{t} <span className="filter-chip-close" onClick={() => toggle(typeF, setTypeF, t)}>×</span></div>)}
+                                        {statusF.map(s => <div key={s} className="filter-chip">{s} <span className="filter-chip-close" onClick={() => toggle(statusF, setStatusF, s)}>×</span></div>)}
+                                        {elfaF.map(e => <div key={e} className="filter-chip">ELFA: {e} <span className="filter-chip-close" onClick={() => toggle(elfaF, setElfaF, e)}>×</span></div>)}
+                                        {districtF.map(d => {
+                                            if (d === 'none') {
+                                                return <div key={d} className="filter-chip">No District Info <span className="filter-chip-close" onClick={() => toggle(districtF, setDistrictF, d)}>×</span></div>;
+                                            }
+                                            const dist = districts.find(x => x.number === d);
+                                            return <div key={d} className="filter-chip">District {d} - {dist?.name} <span className="filter-chip-close" onClick={() => toggle(districtF, setDistrictF, d)}>×</span></div>;
+                                        })}
+                                        {minCap && <div className="filter-chip">Min: {minCap} <span className="filter-chip-close" onClick={() => setMinCap('')}>×</span></div>}
+                                        {maxCap && <div className="filter-chip">Max: {maxCap} <span className="filter-chip-close" onClick={() => setMaxCap('')}>×</span></div>}
+                                        {sfusdOnly && <div className="filter-chip">SFUSD <span className="filter-chip-close" onClick={() => setSfusdOnly(false)}>×</span></div>}
+                                        {prekOnly && <div className="filter-chip">PreK <span className="filter-chip-close" onClick={() => setPrekOnly(false)}>×</span></div>}
+                                        {tkOnly && <div className="filter-chip">TK <span className="filter-chip-close" onClick={() => setTkOnly(false)}>×</span></div>}
+                                        {headStartOnly && <div className="filter-chip">Head Start <span className="filter-chip-close" onClick={() => setHeadStartOnly(false)}>×</span></div>}
+                                        {csppOnly && <div className="filter-chip">CSPP <span className="filter-chip-close" onClick={() => setCsppOnly(false)}>×</span></div>}
+                                        {cctrOnly && <div className="filter-chip">CCTR <span className="filter-chip-close" onClick={() => setCctrOnly(false)}>×</span></div>}
+                                        <button className="clear-all-btn" onClick={clearAllFilters}>Clear All</button>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="filter-section">
+                                <div className="filter-header" onClick={() => setOpen(open === 'district' ? '' : 'district')}>
+                                    <span className="filter-title">Supervisor District</span>
+                                    <span className={`filter-arrow ${open === 'district' ? 'open' : ''}`}>▼</span>
+                                </div>
+                                <div className={`filter-content ${open === 'district' ? 'open' : ''}`}>
+                                    <div className="filter-body">
+                                        {districts.map(dist => (
+                                            <div key={dist.number} className="filter-option">
+                                                <input type="checkbox" id={'district' + dist.number} checked={districtF.includes(dist.number)} onChange={() => toggle(districtF, setDistrictF, dist.number)} />
+                                                <label htmlFor={'district' + dist.number}>District {dist.number} - {dist.name}</label>
+                                                <span className="filter-count">{data.filter(f => f.supervisor_district === dist.number).length}</span>
+                                            </div>
+                                        ))}
+                                        <div key="no-district" className="filter-option">
+                                            <input type="checkbox" id="districtNone" checked={districtF.includes('none')} onChange={() => toggle(districtF, setDistrictF, 'none')} />
+                                            <label htmlFor="districtNone">No District Info</label>
+                                            <span className="filter-count">{data.filter(f => !f.supervisor_district).length}</span>
+                                        </div>
+                                        <div style={{padding: '8px 0', fontSize: '11px', color: '#666', lineHeight: '1.4'}}>
+                                            District assignments based on address geocoding. {data.filter(f => !f.supervisor_district).length} facilities with ZIP-only locations may need manual verification.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {[
+                                {id: 'type', title: 'Facility Type', items: types, filter: typeF, setFilter: setTypeF},
+                                {id: 'status', title: 'License Status', items: statuses, filter: statusF, setFilter: setStatusF},
+                                {id: 'elfa', title: 'ELFA Contracted', items: ['Yes', 'No'], filter: elfaF, setFilter: setElfaF}
+                            ].map(({id, title, items, filter, setFilter}) => (
+                                <div key={id} className="filter-section">
+                                    <div className="filter-header" onClick={() => setOpen(open === id ? '' : id)}>
+                                        <span className="filter-title">{title}</span>
+                                        <span className={`filter-arrow ${open === id ? 'open' : ''}`}>▼</span>
+                                    </div>
+                                    <div className={`filter-content ${open === id ? 'open' : ''}`}>
+                                        <div className="filter-body">
+                                            {items.map(item => (
+                                                <div key={item} className="filter-option">
+                                                    <input type="checkbox" id={id + item} checked={filter.includes(item)} onChange={() => toggle(filter, setFilter, item)} />
+                                                    <label htmlFor={id + item}>{item}</label>
+                                                    <span className="filter-count">{data.filter(f => f[id === 'type' ? 'facility_type' : id === 'status' ? 'facility_status' : 'elfa_contracted'] === item).length}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+
+                            <div className="filter-section">
+                                <div className="filter-header" onClick={() => setOpen(open === 'cap' ? '' : 'cap')}>
+                                    <span className="filter-title">Capacity</span>
+                                    <span className={`filter-arrow ${open === 'cap' ? 'open' : ''}`}>▼</span>
+                                </div>
+                                <div className={`filter-content ${open === 'cap' ? 'open' : ''}`}>
+                                    <div className="filter-body">
+                                        <div className="capacity-inputs">
+                                            <div className="capacity-input"><label>Min</label><input type="number" value={minCap} onChange={e => setMinCap(e.target.value)} placeholder="0" /></div>
+                                            <div className="capacity-input"><label>Max</label><input type="number" value={maxCap} onChange={e => setMaxCap(e.target.value)} placeholder="580" /></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="filter-section">
+                                <div className="filter-header" onClick={() => setOpen(open === 'special' ? '' : 'special')}>
+                                    <span className="filter-title">Special</span>
+                                    <span className={`filter-arrow ${open === 'special' ? 'open' : ''}`}>▼</span>
+                                </div>
+                                <div className={`filter-content ${open === 'special' ? 'open' : ''}`}>
+                                    <div className="filter-body">
+                                        <div className="filter-option">
+                                            <input type="checkbox" id="sfusd" checked={sfusdOnly} onChange={e => setSfusdOnly(e.target.checked)} />
+                                            <label htmlFor="sfusd">SFUSD</label>
+                                            <span className="filter-count">{data.filter(f => f.sfusd_site === 'Yes').length}</span>
+                                        </div>
+                                        <div className="filter-option">
+                                            <input type="checkbox" id="prek" checked={prekOnly} onChange={e => setPrekOnly(e.target.checked)} />
+                                            <label htmlFor="prek">PreK</label>
+                                            <span className="filter-count">{data.filter(f => f.prek_program).length}</span>
+                                        </div>
+                                        <div className="filter-option">
+                                            <input type="checkbox" id="tk" checked={tkOnly} onChange={e => setTkOnly(e.target.checked)} />
+                                            <label htmlFor="tk">TK</label>
+                                            <span className="filter-count">{data.filter(f => f.tk_program).length}</span>
+                                        </div>
+                                        <div className="filter-option">
+                                            <input type="checkbox" id="headstart" checked={headStartOnly} onChange={e => setHeadStartOnly(e.target.checked)} />
+                                            <label htmlFor="headstart">Head Start</label>
+                                            <span className="filter-count">{data.filter(f => f.head_start_program).length}</span>
+                                        </div>
+                                        <div className="filter-option">
+                                            <input type="checkbox" id="cspp" checked={csppOnly} onChange={e => setCsppOnly(e.target.checked)} />
+                                            <label htmlFor="cspp">CSPP</label>
+                                            <span className="filter-count">{data.filter(f => f.cspp_program).length}</span>
+                                        </div>
+                                        <div className="filter-option">
+                                            <input type="checkbox" id="cctr" checked={cctrOnly} onChange={e => setCctrOnly(e.target.checked)} />
+                                            <label htmlFor="cctr">CCTR</label>
+                                            <span className="filter-count">{data.filter(f => f.cctr_contractor).length}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="card">
+                            <div className="map-header">
+                                <div className="map-title">Geographic Distribution</div>
+                                <div className="map-controls">
+                                    <button className={`btn ${heatmap ? 'active' : ''}`} onClick={() => setHeatmap(!heatmap)}>Heatmap</button>
+                                    <button className={`btn ${markers ? 'active' : ''}`} onClick={() => setMarkers(!markers)}>Markers</button>
+                                    <button className={`btn ${mapBoundsFilter ? 'active' : ''}`} onClick={() => {
+                                        setMapBoundsFilter(!mapBoundsFilter);
+                                        if (!mapBoundsFilter && mapInst.current) {
+                                            setCurrentBounds(mapInst.current.getBounds());
+                                        }
+                                    }}>Filter by Map</button>
+                                    <button className="btn" onClick={() => mapInst.current?.setView([37.7749, -122.4194], 12)}>Reset</button>
+                                </div>
+                            </div>
+                            <div id="map" ref={mapRef}></div>
+                            <div className="map-note">
+                                Click markers for details. Use scroll wheel to zoom. Click & drag to pan. Click "Filter by Map" to show only facilities in current view.
+                                Legend shows status colors (green=licensed) and location accuracy (orange border=ZIP-based approximation).
+                            </div>
+                        </div>
+
+                        <div>
+                            <div className="card stats-card sidebar">
+                                <h3>Quick Stats</h3>
+                                {[
+                                    {label: 'Total Facilities', val: stats.total, w: '100%'},
+                                    {label: 'Total Capacity', val: stats.cap.toLocaleString(), w: '85%'},
+                                    {label: 'Licensed', val: stats.licPct + '%', w: stats.licPct + '%'}
+                                ].map((s, i) => (
+                                    <div key={i} className="stat-item">
+                                        <div className="stat-item-label">{s.label}</div>
+                                        <div className="stat-row">
+                                            <div className="stat-num">{s.val}</div>
+                                            <div className="progress-bar"><div className="progress-fill" style={{width: s.w}}></div></div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="card stats-card">
+                                <h3>Capacity Distribution</h3>
+                                <div className="chart-container"><canvas ref={chartRef}></canvas></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="card" style={{padding: '20px'}}>
+                        <div className="facilities-header">
+                            <h2>Facilities</h2>
+                            <div>Showing {(page-1)*perPage+1}-{Math.min(page*perPage, filtered.length)} of {filtered.length}</div>
+                        </div>
+
+                        {paged.map((f, i) => (
+                            <div key={i} className="facility-card">
+                                <div className="facility-header">
+                                    <div className="facility-name">{f.facility_name}</div>
+                                    <div className="badges">
+                                        <span className={`badge ${f.facility_status === 'LICENSED' ? 'badge-licensed' : 'badge-closed'}`}>{f.facility_status}</span>
+                                        {f.elfa_contracted === 'Yes' && <span className="badge badge-elfa">ELFA</span>}
+                                        {f.sfusd_site === 'Yes' && <span className="badge badge-sfusd">SFUSD</span>}
+                                        {f.prek_program && <span className="badge badge-prek">PreK</span>}
+                                        {f.tk_program && <span className="badge badge-tk">TK</span>}
+                                        {f.head_start_program && <span className="badge badge-headstart">HEAD START</span>}
+                                        {f.cspp_program && <span className="badge badge-cspp">CSPP</span>}
+                                        {f.cctr_contractor && <span className="badge badge-cctr">CCTR</span>}
+                                        {f.tags?.address_source === 'zip_code_approximate' && <span className="badge" style={{background: '#fff3cd', color: '#856404'}}>ZIP</span>}
+                                    </div>
+                                </div>
+                                <div className="facility-details">
+                                    <div><strong>License #:</strong> {f.facility_number}</div>
+                                    <div><strong>Type:</strong> {f.facility_type}</div>
+                                    <div>{f.facility_address || `ZIP ${f.facility_zip} (address unavailable)`}, {f.facility_city} {f.facility_zip}</div>
+                                    {f.supervisor_district && <div style={{marginTop: '4px'}}><strong>District {f.supervisor_district}:</strong> {f.supervisor_name}</div>}
+                                    {f.neighborhood && <div style={{color: '#666', fontSize: '12px'}}>Neighborhood: {f.neighborhood}</div>}
+                                    {f.sfusd_site === 'Yes' && f.sfusd_school_name && <div style={{color: '#673AB7', marginTop: '4px'}}>{f.sfusd_school_name}</div>}
+                                </div>
+                                <div className="facility-capacity">Capacity: {f.facility_capacity || 'N/A'}</div>
+                            </div>
+                        ))}
+
+                        {totalPages > 1 && (
+                            <div className="pagination">
+                                <button className="page-btn" onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1}>Prev</button>
+                                {[...Array(Math.min(5, totalPages))].map((_, i) => {
+                                    let p = totalPages <= 5 ? i + 1 : page <= 3 ? i + 1 : page >= totalPages - 2 ? totalPages - 4 + i : page - 2 + i;
+                                    return <button key={i} className={`page-btn ${page === p ? 'active' : ''}`} onClick={() => setPage(p)}>{p}</button>;
+                                })}
+                                <button className="page-btn" onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page === totalPages}>Next</button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div style={{display: tab === 'landscape' ? 'block' : 'none'}}>
+                    {/* ==================== CHILD CARE LANDSCAPE PANEL ==================== */}
+                    <div className="landscape-panel">
+                        <h2>Child Care Landscape</h2>
+
+                        {/* Disclaimer */}
+                        <div className="landscape-disclaimer">
+                            Licensed child care is one of many care arrangements families use. This data shows licensed capacity relative to the child population &mdash; it does not represent total care needs or imply that all families require licensed slots.
+                        </div>
+
+                        {/* City-Wide Summary Cards */}
+                        <div className="landscape-cards">
+                            <div className="landscape-card">
+                                <div className="lc-value">{supplyByDistrict.total?.totalCap?.toLocaleString() || '...'}</div>
+                                <div className="lc-label">Licensed Slots</div>
+                                <div className="lc-context">Serving a total population of {demandTotals.under6?.toLocaleString()} children under 6 (all incomes)</div>
+                            </div>
+                            <div className="landscape-card">
+                                <div className="lc-value">{supplyByDistrict.total?.totalCap && demandTotals.under6 ? (supplyByDistrict.total.totalCap / demandTotals.under6).toFixed(2) : '...'}</div>
+                                <div className="lc-label">Licensed Slots per Child</div>
+                                <div className="lc-context">Many families use parental, FFN, or license-exempt care by choice</div>
+                            </div>
+                            <div className="landscape-card">
+                                <div className="lc-value">{supplyByDistrict.total?.elfaCap?.toLocaleString() || '...'}</div>
+                                <div className="lc-label">ELFA Contracted Slots</div>
+                                <div className="lc-context">{supplyByDistrict.total?.totalCap > 0 ? Math.round((supplyByDistrict.total?.elfaCap || 0) / supplyByDistrict.total.totalCap * 100) : 0}% of all licensed capacity</div>
+                            </div>
+                            <div className="landscape-card">
+                                <div className="lc-value">{supplyByDistrict.total?.infantCap?.toLocaleString() || '...'}</div>
+                                <div className="lc-label">Infant/Toddler Center Slots</div>
+                                <div className="lc-context">Relative to {demandTotals.under3?.toLocaleString()} children under 3</div>
+                            </div>
+                        </div>
+
+                        {/* ===== Two-column: Supply | Demand ===== */}
+                        <div className="supply-demand-grid">
+
+                            {/* LEFT: Supply */}
+                            <div className="sd-column">
+                                <h3 className="supply-heading">Licensed Care Supply</h3>
+
+                                <h4>Supervisor Districts</h4>
+                                <div id="district-map" ref={districtMapRef} style={{height: '360px', borderRadius: '8px', border: '1px solid #e0e0e0', marginBottom: '8px'}}></div>
+                                <div style={{display: 'flex', flexWrap: 'wrap', gap: '4px 12px', fontSize: '11px', color: '#666', marginBottom: '16px'}}>
+                                    {DEMAND_DATA.map(d => {
+                                        const geo = districtGeo?.features?.find(f => parseInt(f.properties.district) === d.district);
+                                        return <span key={d.district}><span style={{display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: DISTRICT_COLORS[d.district - 1], marginRight: 3, verticalAlign: 'middle'}}></span>D{d.district} {geo?.properties?.name || ''}</span>;
+                                    })}
+                                </div>
+
+                                <h4>Licensed Capacity by District</h4>
+                                <div style={{fontSize: '12px', color: '#888', fontStyle: 'italic', marginBottom: '8px'}}>ELFA contracted vs other licensed slots</div>
+                                <div style={{height: '340px'}}>
+                                    <canvas ref={supplyChartRef}></canvas>
+                                </div>
+                            </div>
+
+                            {/* RIGHT: Demand */}
+                            <div className="sd-column">
+                                <h3 className="demand-heading">Child Population &amp; Income</h3>
+
+                                <h4>Households with Children Under 6 by Income</h4>
+                                <div style={{fontSize: '11px', color: '#888', fontStyle: 'italic', marginBottom: '6px'}}>Each bar = households with children under 6 in that district, split by income</div>
+                                <div className="ami-legend" style={{marginBottom: '10px'}}>
+                                    <div className="ami-legend-item"><div className="ami-legend-swatch" style={{background: AMI_COLORS.le110}}></div><span>&le;110% AMI</span></div>
+                                    <div className="ami-legend-item"><div className="ami-legend-swatch" style={{background: AMI_COLORS.b110_150}}></div><span>110&ndash;150%</span></div>
+                                    <div className="ami-legend-item"><div className="ami-legend-swatch" style={{background: AMI_COLORS.b150_200}}></div><span>150&ndash;200%</span></div>
+                                    <div className="ami-legend-item"><div className="ami-legend-swatch" style={{background: AMI_COLORS.gt200}}></div><span>&gt;200%</span></div>
+                                </div>
+                                <div className="ami-bars-section">
+                                    {DEMAND_DATA.map(d => {
+                                        const maxVal = Math.max(...DEMAND_DATA.map(x => x.total_hh));
+                                        const pct = v => ((v / maxVal) * 100).toFixed(1) + '%';
+                                        return <div key={d.district} className="ami-bar-row" style={{marginBottom: '8px'}}>
+                                            <div className="ami-bar-label">D{d.district}</div>
+                                            <div className="ami-bar-track">
+                                                <div className="ami-bar-seg" style={{width: pct(d.le110), background: AMI_COLORS.le110}} title={`\u2264110% AMI: ${d.le110.toLocaleString()} HH with kids <6`}>
+                                                    {d.le110 > maxVal * 0.06 ? d.le110.toLocaleString() : ''}
+                                                </div>
+                                                <div className="ami-bar-seg" style={{width: pct(d.b110_150), background: AMI_COLORS.b110_150}} title={`110-150% AMI: ${d.b110_150.toLocaleString()} HH with kids <6`}>
+                                                </div>
+                                                <div className="ami-bar-seg" style={{width: pct(d.b150_200), background: AMI_COLORS.b150_200}} title={`150-200% AMI: ${d.b150_200.toLocaleString()} HH with kids <6`}>
+                                                </div>
+                                                <div className="ami-bar-seg" style={{width: pct(d.gt200), background: AMI_COLORS.gt200, color: '#666'}} title={`>200% AMI: ${d.gt200.toLocaleString()} HH with kids <6`}>
+                                                    {d.gt200 > maxVal * 0.06 ? d.gt200.toLocaleString() : ''}
+                                                </div>
+                                            </div>
+                                        </div>;
+                                    })}
+                                </div>
+                                <div className="landscape-footnote" style={{marginBottom: '16px'}}>
+                                    ELFA eligibility expands to 200% AMI on July 1, 2026.
+                                </div>
+
+                                <div className="care-arrangement" style={{marginBottom: 0}}>
+                                    <h4 style={{margin: '0 0 8px', color: '#555', fontSize: '13px', fontWeight: 600}}>How Families Arrange Care</h4>
+                                    <ul>
+                                        <li>Parent/guardian at home</li>
+                                        <li>Family, friend, or neighbor (FFN) care</li>
+                                        <li>License-exempt care</li>
+                                        <li>Licensed family child care</li>
+                                        <li>Licensed centers</li>
+                                    </ul>
+                                    <div className="context-note">
+                                        National estimates (Census NHES) suggest roughly 60% of children under 6 are in some form of regular non-parental care. Licensed care is one of several options.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* ===== Full-width: Combined table ===== */}
+                        <h3>Licensed Supply by District</h3>
+                        <div className="landscape-table-wrap">
+                            <table className="landscape-table">
+                                <thead>
+                                    <tr>
+                                        <th>District</th>
+                                        <th>Licensed Capacity</th>
+                                        <th>ELFA Capacity</th>
+                                        <th>ELFA %</th>
+                                        <th>All Children Under 6</th>
+                                        <th>Slots per Child</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {DEMAND_DATA.map(d => {
+                                        const supply = supplyByDistrict[d.district] || {};
+                                        const under6 = d.under3 + d.age3_4 + d.age5;
+                                        const slotsPerChild = under6 > 0 ? (supply.totalCap / under6).toFixed(2) : '-';
+                                        const elfaPct = supply.totalCap > 0 ? Math.round((supply.elfaCap || 0) / supply.totalCap * 100) : 0;
+                                        return <tr key={d.district}>
+                                            <td>District {d.district}</td>
+                                            <td>{(supply.totalCap || 0).toLocaleString()}</td>
+                                            <td>{(supply.elfaCap || 0).toLocaleString()}</td>
+                                            <td>{elfaPct}%</td>
+                                            <td>{under6.toLocaleString()}</td>
+                                            <td>{slotsPerChild}</td>
+                                        </tr>;
+                                    })}
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td>Citywide</td>
+                                        <td>{(supplyByDistrict.total?.totalCap || 0).toLocaleString()}</td>
+                                        <td>{(supplyByDistrict.total?.elfaCap || 0).toLocaleString()}</td>
+                                        <td>{supplyByDistrict.total?.totalCap > 0 ? Math.round((supplyByDistrict.total?.elfaCap || 0) / supplyByDistrict.total.totalCap * 100) : 0}%</td>
+                                        <td>{demandTotals.under6?.toLocaleString()}</td>
+                                        <td>{supplyByDistrict.total?.totalCap && demandTotals.under6 ? (supplyByDistrict.total.totalCap / demandTotals.under6).toFixed(2) : '-'}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                        <div className="landscape-footnote">
+                            Not all families seek licensed care. Slots per child compares licensed capacity to the total child population (all incomes, ACS B09001).
+                            ELFA % = share of a district's total licensed slots that are ELFA-contracted. Household income data shown separately in the AMI chart above.
+                        </div>
+
+                        {/* ===== Full-width: Comparison chart ===== */}
+                        <h3>Licensed Supply vs Households with Children Under 6 by District</h3>
+                        <div className="landscape-chart-wrap">
+                            <div className="chart-subtitle">Eligibility does not equal demand &mdash; not all eligible households seek licensed care</div>
+                            <div style={{height: '380px'}}>
+                                <canvas ref={landscapeChartRef} className="landscape-chart-canvas"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    {/* ==================== END LANDSCAPE PANEL ==================== */}
+                </div>
+
+                </div>
+
+                {modal && (
+                    <div className="modal-overlay" onClick={() => setModal(false)}>
+                        <div className="modal" onClick={e => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h2>Data &amp; Methodology</h2>
+                                <button className="modal-close" onClick={() => setModal(false)}>×</button>
+                            </div>
+
+                            {tab === 'landscape' && <>
+                            <div className="modal-section">
+                                <h3>Supply Data</h3>
+                                <p><strong>Source:</strong> California Community Care Licensing Division (CCLD) facility data, cross-referenced with SF Department of Early Childhood ELFA program records.</p>
+                                <p><strong>Licensed Capacity:</strong> Total slots reported on each facility's license. Includes Day Care Centers, Infant Centers, and Large Family Child Care Homes with status "LICENSED."</p>
+                                <p><strong>ELFA Contracted:</strong> Facilities flagged as ELFA-contracted in SFDEC data. ELFA capacity = total licensed capacity of those facilities. Note: not all slots at an ELFA site may be subsidized.</p>
+                                <p><strong>Infant/Toddler Slots:</strong> Licensed capacity of facilities classified as "INFANT CENTER" by CCLD. Does not include infant slots within mixed-age centers.</p>
+                            </div>
+                            <div className="modal-section">
+                                <h3>Demand &amp; Population Data</h3>
+                                <p><strong>Source:</strong> American Community Survey (ACS) 2020&ndash;2024 5-year estimates at the census tract level, aggregated to SF Supervisor Districts using DataSF boundary files.</p>
+                                <p><strong>Children Under 6:</strong> Total child population by age group (under 3, ages 3&ndash;4, age 5) from ACS table B09001. This counts all children in the district regardless of household income. This is a different unit from household counts.</p>
+                                <p><strong>Household Income:</strong> Households with children under 6 are derived from ACS S1101: the count of HH with children under 18 (S1101_C01_005E) multiplied by the percentage with children under 6 (S1101_C01_006E + S1101_C01_007E). These are then distributed across AMI bands using B19001 income data and MOHCD 2025 thresholds. These are household counts, not child counts &mdash; a different metric from the child population figures.</p>
+                            </div>
+                            <div className="modal-section">
+                                <h3>AMI Thresholds (MOHCD 2025)</h3>
+                                <p>Area Median Income (AMI) is set annually by the Mayor's Office of Housing and Community Development. For a family of four in San Francisco:</p>
+                                <p>
+                                    <strong>&le;110% AMI:</strong> &le;$167,750 &mdash; ELFA fully funded<br/>
+                                    <strong>110&ndash;150% AMI:</strong> $167,751&ndash;$228,750 &mdash; ELFA tuition credit<br/>
+                                    <strong>150&ndash;200% AMI:</strong> $228,751&ndash;$305,000 &mdash; ELFA 50% discount (full coverage 7/1/2026)<br/>
+                                    <strong>&gt;200% AMI:</strong> &gt;$305,000 &mdash; Market rate
+                                </p>
+                            </div>
+                            <div className="modal-section">
+                                <h3>Key Definitions</h3>
+                                <p><strong>ELFA (Early Learning for All):</strong> San Francisco's universal early care and education initiative administered by the Department of Early Childhood.</p>
+                                <p><strong>AMI (Area Median Income):</strong> Regional income benchmark used to determine eligibility for housing and social programs.</p>
+                                <p><strong>FFN (Family, Friend, or Neighbor) Care:</strong> Informal care by relatives, friends, or neighbors &mdash; not tracked in licensing data.</p>
+                                <p><strong>Slots per Child:</strong> Licensed capacity divided by child population. A ratio, not an indicator of availability or need. Many families choose non-licensed arrangements.</p>
+                            </div>
+                            <div className="modal-section">
+                                <h3>Limitations &amp; Caveats</h3>
+                                <p><strong>Different data sources:</strong> Household counts (ACS S1101) and child population counts (ACS B09001) come from different ACS tables with different survey universes. Household counts measure families; child counts measure individuals. These should not be directly compared as equivalent units.</p>
+                                <p><strong>Household variable:</strong> Households with children under 6 are derived from S1101_C01_005E (HH with children under 18) multiplied by the under-6 sub-category percentages (S1101_C01_006E + S1101_C01_007E). AMI band distributions are modeled estimates, not direct survey responses.</p>
+                                <p><strong>ACS sampling:</strong> All numbers are sample estimates with margins of error, especially at small geographies like ZCTAs. AMI band assignments are approximate &mdash; actual household eligibility depends on family size and current income.</p>
+                                <p><strong>Geography:</strong> District boundaries follow the 2022 redistricting. Data is aggregated from ZCTAs to districts using population-weighted census block intersections.</p>
+                                <p><strong>Licensed capacity</strong> reflects what a facility is licensed to serve, not current enrollment or available openings.</p>
+                            </div>
+                            </>}
+
+                            {tab === 'programs' && <>
+                            <div className="modal-section">
+                                <h3>Data Limitation</h3>
+                                <p>This dashboard includes licensed child care <strong>centers and large Family Child Care (FCC)</strong> facilities from CCLD data. <strong>Small FCCs are not included</strong> as they must be deduced from combining SFDEC and CCLD large FCC data using license numbers.</p>
+                                <p><strong>Coverage:</strong><br/>Day Care Centers<br/>Large FCCs<br/>Small FCCs (requires cross-reference)</p>
+                            </div>
+                            <div className="modal-section">
+                                <h3>Location Data</h3>
+                                <p>Most facilities have been geocoded to precise addresses. Facilities without street addresses (typically small family child care homes) are displayed using <strong>jittered ZIP code centroids</strong> - approximate locations with small random offsets to prevent stacking.</p>
+                                <p><strong>Map Legend:</strong><br/>White-bordered markers: Geocoded addresses<br/>Orange-bordered markers: ZIP-based (jittered)</p>
+                            </div>
+                            <div className="modal-section">
+                                <h3>Supervisor District Data</h3>
+                                <p><strong>Coverage:</strong> 1,100 out of 1,144 facilities (96%) have been assigned to supervisor districts.</p>
+                                <p><strong>Assignment Method:</strong><br/>
+                                488 facilities: Exact match via address database<br/>
+                                612 facilities: Proximity match (within 100 meters)<br/>
+                                44 facilities: No district assignment (ZIP-based approximations)</p>
+                                <p><strong>Important Limitations:</strong><br/>
+                                Facilities with ZIP-only locations may be near district borders. Their assigned districts should be verified manually for accuracy. Use the "No District Info" filter to identify these facilities.</p>
+                                <p><strong>Current Supervisors:</strong> Data reflects supervisors as of December 2024.</p>
+                            </div>
+                            <div className="modal-section">
+                                <h3>Head Start Programs</h3>
+                                <p><strong>Coverage:</strong> 46 facilities are affiliated with federally-funded Head Start programs serving low-income families.</p>
+                                <p><strong>Programs Included:</strong><br/>
+                                Wu Yee Children's Services: 21 facilities<br/>
+                                Kai Ming Head Start: 13 facilities<br/>
+                                Mission Head Start: 12 facilities</p>
+                                <p>Head Start facilities are tagged throughout the dashboard with an orange <span style={{background: '#fff3e0', color: '#e65100', padding: '2px 6px', borderRadius: '8px', fontSize: '10px', fontWeight: '600'}}>HEAD START</span> badge and can be filtered using the "Head Start" checkbox in Special filters.</p>
+                            </div>
+                            <div className="modal-section">
+                                <h3>CSPP (California State Preschool Program)</h3>
+                                <p><strong>Coverage:</strong> 70 facilities participate in the state-funded California State Preschool Program.</p>
+                                <p><strong>Programs Included:</strong> Chinatown Community, Compass Family Services, FACES SF, Holy Family Day Home, Kai Ming, Mission Child Care Consortium, Nihonmachi Little Friends, South of Market Child Care, and Wu Yee Children's Services.</p>
+                                <p><strong>Overlap with Head Start:</strong> 46 facilities participate in both federal Head Start and state CSPP programs, providing comprehensive early childhood education funding.</p>
+                                <p>CSPP facilities are tagged with a green <span style={{background: '#e8f5e9', color: '#2e7d32', padding: '2px 6px', borderRadius: '8px', fontSize: '10px', fontWeight: '600'}}>CSPP</span> badge and can be filtered using the "CSPP" checkbox in Special filters.</p>
+                            </div>
+                            <div className="modal-section">
+                                <h3>CCTR (California Child Care & Development Services)</h3>
+                                <p>Facilities contracted through the CCTR program are tagged with a green <span style={{background: '#c8e6c9', color: '#2e7d32', padding: '2px 6px', borderRadius: '8px', fontSize: '10px', fontWeight: '600'}}>CCTR</span> badge and can be filtered by contractor.</p>
+                                <p><strong>FY24-25 CCTR Contractors:</strong><br/>Mission Neighborhood Centers, Inc.<br/>South of Market Child Care Inc.<br/>Wu Yee Children's Services</p>
+                            </div>
+                            <div className="modal-section">
+                                <h3>Data Sources</h3>
+                                <ul>
+                                    <li><a href="https://sfdec.org/early-learning-for-all/early-learning-programs/" target="_blank">ELFA - SF Dept Early Childhood</a></li>
+                                    <li><a href="https://www.ccld.dss.ca.gov/carefacilitysearch/DownloadData" target="_blank">CCLD - CA Licensing</a></li>
+                                    <li><a href="https://www.sfusd.edu/schools/directory/table?field_school_type_target_id%5B317%5D=317" target="_blank">SFUSD Directory</a></li>
+                                    <li><a href="https://cdss.ca.gov/inforesources/child-care-and-development/contractor-resources/general-child-care-and-development-cctr-expansion/fy-24-25" target="_blank">CCTR - CA Dept of Social Services (FY 24-25)</a></li>
+                                    <li><a href="https://www.cde.ca.gov/fg/fo/r2/cspp2425fundresults.asp" target="_blank">CSPP - CA Dept of Education (FY 24-25)</a></li>
+                                </ul>
+                            </div>
+                            </>}
+                        </div>
+                    </div>
+                )}
+            </div>;
+        };
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
