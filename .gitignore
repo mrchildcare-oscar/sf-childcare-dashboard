@@ -3,8 +3,13 @@
 __pycache__/
 *.py
 
-# Data files (keep only the final JSON)
+# Data files (hosted on Vercel, not in repo)
 *.csv
+*.json
+*.geojson
+*.xlsx
+
+# Intermediate data
 childcare_data_enhanced.json
 childcare_with_coords.json
 facilities_with_jittered_coords.json

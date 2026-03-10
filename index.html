@@ -152,7 +152,7 @@
     <script>
         // Load data from external JSON
         window.CHILDCARE_DATA = null;
-        fetch('./childcare_all_coordinates.json')
+        fetch('https://ece-data-host.vercel.app/childcare_all_coordinates.json')
             .then(r => r.json())
             .then(d => {
                 window.CHILDCARE_DATA = d;

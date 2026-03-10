@@ -453,7 +453,7 @@
     <script>
         // Load data from external JSON
         window.CHILDCARE_DATA = null;
-        fetch('./childcare_all_coordinates.json')
+        fetch('https://ece-data-host.vercel.app/childcare_all_coordinates.json')
             .then(r => r.json())
             .then(d => {
                 window.CHILDCARE_DATA = d;
@@ -466,7 +466,7 @@
 
         // Load district boundaries GeoJSON
         window.DISTRICT_GEO = null;
-        fetch('./sf_districts.geojson')
+        fetch('https://ece-data-host.vercel.app/sf_districts.geojson')
             .then(r => r.json())
             .then(d => {
                 window.DISTRICT_GEO = d;
