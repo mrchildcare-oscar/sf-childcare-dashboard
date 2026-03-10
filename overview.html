@@ -1554,9 +1554,6 @@
                                     <div className="stat-pill"><div className="stat-value">{stats.cap.toLocaleString()}</div><div className="stat-label">Capacity</div></div>
                                     <div className="stat-pill"><div className="stat-value">{stats.licPct}%</div><div className="stat-label">Licensed</div></div>
                                     <div className="stat-pill"><div className="stat-value">{stats.sfu}</div><div className="stat-label">SFUSD</div></div>
-                                    <div className="stat-pill"><div className="stat-value">{stats.cctr}</div><div className="stat-label">CCTR</div></div>
-                                    <div className="stat-pill"><div className="stat-value">{stats.cspp}</div><div className="stat-label">CSPP</div></div>
-                                    <div className="stat-pill"><div className="stat-value">{stats.headStart}</div><div className="stat-label">Head Start</div></div>
                                 </> : tab === 'scenarios' ? <>
                                     <div className="stat-pill"><div className="stat-value">{Math.round(supplyByDistrict.total?.totalCap || 0).toLocaleString()}</div><div className="stat-label">Licensed Capacity</div></div>
                                     <div className="stat-pill"><div className="stat-value">{supplyByDistrict.total?.elfaCount || '...'}</div><div className="stat-label">ELFA Sites</div></div>
