@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SF ECE Policy Scenarios — CPAC Priorities</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; background: #f5f5f5; color: #333; line-height: 1.6; }
+
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 28px 30px; }
+        .header-content { max-width: 1200px; margin: 0 auto; }
+        .header h1 { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+        .header p { font-size: 14px; opacity: 0.9; max-width: 700px; }
+        .header-pills { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+        .pill { background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 20px; text-align: center; min-width: 100px; }
+        .pill-value { font-size: 18px; font-weight: 700; }
+        .pill-label { font-size: 11px; opacity: 0.9; text-transform: uppercase; }
+        .data-source { font-size: 11px; opacity: 0.7; margin-top: 12px; }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+        /* ELFA Tiers */
+        .elfa-tiers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
+        .elfa-tier { background: white; border-radius: 10px; padding: 16px; text-align: center; border: 2px solid #e0e0e0; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+        .elfa-tier.active { border-color: #4CAF50; background: #f1f8e9; }
+        .elfa-tier.new { border-color: #FF9800; background: #fff8e1; }
+        .elfa-tier .ami { font-size: 13px; font-weight: 700; color: #555; margin-bottom: 4px; }
+        .elfa-tier .benefit { font-size: 20px; font-weight: 700; color: #333; }
+        .elfa-tier.active .benefit { color: #2e7d32; }
+        .elfa-tier.new .benefit { color: #e65100; }
+        .elfa-tier .note { font-size: 11px; color: #888; margin-top: 4px; }
+        .elfa-tier.new .note { color: #e65100; }
+
+        /* Scenario Cards */
+        .cards-header { text-align: center; margin-bottom: 20px; }
+        .cards-header h2 { font-size: 22px; color: #333; margin-bottom: 6px; }
+        .cards-header p { color: #777; font-size: 14px; }
+        .cards-header .cpac-badge { display: inline-block; background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-bottom: 8px; }
+
+        .scenario-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-bottom: 28px; }
+        .scenario-card { background: white; border-radius: 12px; padding: 22px; cursor: pointer; transition: all 0.3s; border: 1px solid #e0e0e0; box-shadow: 0 1px 4px rgba(0,0,0,0.06); position: relative; overflow: hidden; }
+        .scenario-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; }
+        .scenario-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.12); }
+        .scenario-card .priority-num { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .scenario-card h3 { font-size: 17px; font-weight: 700; color: #333; margin-bottom: 6px; }
+        .scenario-card .tagline { font-size: 13px; font-style: italic; color: #667eea; margin-bottom: 12px; }
+        .scenario-card .preview { font-size: 13px; color: #666; line-height: 1.7; }
+        .scenario-card .preview .win { color: #2e7d32; }
+        .scenario-card .preview .concern { color: #c62828; }
+        .scenario-card .preview .question { color: #e65100; }
+        .scenario-card .explore-btn { width: 100%; margin-top: 14px; padding: 10px; background: #f5f5f5; border: 1px solid #e0e0e0; border-radius: 8px; color: #667eea; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+        .scenario-card .explore-btn:hover { background: #667eea; color: white; }
+
+        .card-a::before { background: #e91e63; } .card-a .priority-num { color: #e91e63; }
+        .card-b::before { background: #2196F3; } .card-b .priority-num { color: #2196F3; }
+        .card-c::before { background: #FF9800; } .card-c .priority-num { color: #FF9800; }
+        .card-d::before { background: #9C27B0; } .card-d .priority-num { color: #9C27B0; }
+        .card-e::before { background: #009688; } .card-e .priority-num { color: #009688; }
+
+        /* Detail View */
+        .back-btn { background: #f5f5f5; border: 1px solid #e0e0e0; color: #555; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin-bottom: 20px; font-size: 14px; font-weight: 500; transition: all 0.2s; }
+        .back-btn:hover { background: #e8e8e8; }
+        .detail-header { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; border-left: 5px solid #667eea; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+        .detail-header h1 { font-size: 24px; color: #333; margin-bottom: 6px; }
+        .detail-header .tagline { font-size: 15px; color: #667eea; font-style: italic; }
+
+        /* Content Sections */
+        .content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        @media (max-width: 900px) { .content-grid { grid-template-columns: 1fr; } .elfa-tiers { grid-template-columns: repeat(2, 1fr); } }
+        .content-section { background: white; border: 1px solid #e0e0e0; border-radius: 12px; padding: 22px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+        .content-section.full-width { grid-column: 1 / -1; }
+        .section-header { font-size: 16px; font-weight: 700; color: #333; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #f0f0f0; }
+
+        /* Flow Diagram */
+        .flow-diagram { display: flex; flex-direction: column; gap: 12px; }
+        .flow-step { background: #fafafa; padding: 14px 16px; border-radius: 8px; border-left: 4px solid #667eea; }
+        .flow-step.positive { border-left-color: #4CAF50; }
+        .flow-step.negative { border-left-color: #f44336; }
+        .flow-step.warning { border-left-color: #FF9800; }
+        .flow-step.question { border-left-color: #2196F3; }
+        .flow-step strong { display: block; font-size: 14px; color: #333; margin-bottom: 4px; }
+        .flow-step span { font-size: 13px; color: #666; }
+
+        /* Impact Categories */
+        .impact-category { margin: 16px 0; }
+        .impact-category h4 { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+        .impact-category.benefits h4 { color: #2e7d32; }
+        .impact-category.concerns h4 { color: #c62828; }
+        .impact-category.unknowns h4 { color: #e65100; }
+        .impact-category ul { list-style: none; padding: 0; }
+        .impact-category li { padding: 5px 0 5px 22px; position: relative; font-size: 13px; color: #555; }
+        .impact-category.benefits li::before { content: '\2713'; position: absolute; left: 0; color: #4CAF50; font-weight: bold; }
+        .impact-category.concerns li::before { content: '\2717'; position: absolute; left: 0; color: #f44336; font-weight: bold; }
+        .impact-category.unknowns li::before { content: '?'; position: absolute; left: 0; color: #FF9800; font-weight: bold; }
+
+        /* Stats Box */
+        .stats-box { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; margin: 16px 0; }
+        .stat-item { background: #fafafa; padding: 14px; border-radius: 8px; text-align: center; border: 1px solid #eee; }
+        .stat-value { font-size: 22px; font-weight: 700; color: #333; }
+        .stat-value.positive { color: #2e7d32; }
+        .stat-value.negative { color: #c62828; }
+        .stat-value.highlight { color: #667eea; }
+        .stat-label { font-size: 11px; color: #888; margin-top: 4px; }
+
+        /* Quote Box */
+        .quote-box { background: #f5f0ff; border: 1px solid #e0d4f5; border-radius: 10px; padding: 16px; margin: 16px 0; }
+        .quote-box h4 { color: #667eea; font-size: 13px; margin-bottom: 10px; }
+        .quote { font-style: italic; background: white; padding: 12px; border-left: 3px solid #667eea; margin: 8px 0; font-size: 13px; color: #555; line-height: 1.6; border-radius: 0 6px 6px 0; }
+        .quote strong { font-style: normal; color: #333; }
+
+        /* Callout Box */
+        .callout { border-radius: 8px; padding: 16px; margin: 16px 0; font-size: 13px; line-height: 1.6; }
+        .callout.info { background: #e8f0fe; border-left: 4px solid #4285f4; }
+        .callout.warning { background: #fff3e0; border-left: 4px solid #FF9800; }
+        .callout.success { background: #e8f5e9; border-left: 4px solid #4CAF50; }
+        .callout h4 { font-size: 14px; margin-bottom: 6px; }
+        .callout.info h4 { color: #1565c0; }
+        .callout.warning h4 { color: #e65100; }
+        .callout.success h4 { color: #2e7d32; }
+        .callout p { color: #555; margin-bottom: 4px; }
+
+        /* Toggle */
+        .toggle-bar { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+        .toggle-btn { padding: 8px 16px; background: #f0f0f0; border: 1px solid #ddd; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .toggle-btn:hover { background: #e0e0e0; }
+        .toggle-btn.active { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-color: transparent; }
+
+        /* Table */
+        .data-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 12px 0; }
+        .data-table th { background: #f0f0f0; padding: 10px 12px; text-align: right; font-weight: 600; color: #555; border-bottom: 2px solid #ddd; }
+        .data-table th:first-child { text-align: left; }
+        .data-table td { padding: 9px 12px; text-align: right; border-bottom: 1px solid #eee; }
+        .data-table td:first-child { text-align: left; font-weight: 600; }
+        .data-table tr:hover { background: #f9f9ff; }
+        .data-table tfoot td { font-weight: 700; border-top: 2px solid #ddd; background: #fafafa; }
+        .data-table .high { color: #c62828; font-weight: 700; }
+        .data-table .low { color: #2e7d32; font-weight: 700; }
+
+        /* Chart */
+        .chart-wrap { margin: 16px 0; }
+        .chart-wrap canvas { max-height: 350px; }
+        .chart-subtitle { font-size: 12px; color: #888; font-style: italic; margin-bottom: 8px; }
+
+        /* Advocacy */
+        .advocacy-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 16px 0; }
+        .action-btn { background: #e8f5e9; border: 1px solid #c8e6c9; color: #2e7d32; padding: 12px; border-radius: 8px; text-align: center; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; }
+        .action-btn:hover { background: #c8e6c9; transform: translateY(-2px); }
+
+        /* Comparison Table */
+        .comparison-table { border-radius: 8px; overflow: hidden; margin: 16px 0; border: 1px solid #e0e0e0; }
+        .comparison-table table { width: 100%; border-collapse: collapse; }
+        .comparison-table th { background: #f0f0f0; color: #555; padding: 12px; text-align: left; font-size: 13px; font-weight: 600; }
+        .comparison-table td { padding: 12px; border-bottom: 1px solid #eee; font-size: 13px; color: #555; }
+        .comparison-table tr:last-child td { border-bottom: none; }
+
+        /* Footer */
+        .footer { text-align: center; padding: 20px; color: #999; font-size: 12px; margin-top: 20px; }
+        .footer a { color: #667eea; text-decoration: none; }
+
+        /* Loading */
+        .loading { display: flex; justify-content: center; align-items: center; height: 60vh; flex-direction: column; gap: 16px; }
+        .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script>
+        window.CHILDCARE_DATA = null;
+        fetch('./childcare_all_coordinates.json')
+            .then(r => r.json())
+            .then(d => {
+                window.CHILDCARE_DATA = d;
+                if (window.onDataLoad) window.onDataLoad();
+            })
+            .catch(e => {
+                console.error('Data load failed:', e);
+                document.getElementById('root').innerHTML = '<div style="padding:40px;text-align:center;color:#c62828;">Error loading data. Run a local server: <code>python -m http.server 8000</code></div>';
+            });
+
+        // Source: ACS 2020-2024 5-year, MOHCD 2025 AMI thresholds, DataSF Districts
+        const DEMAND_DATA = [
+            { district: 1,  total_hh: 2301, le110: 1055, b110_150: 278, b150_200: 239, gt200:  730, under3: 1902, age3_4: 1143, age5: 412 },
+            { district: 2,  total_hh: 2186, le110:  838, b110_150: 245, b150_200: 249, gt200:  854, under3: 2078, age3_4: 1303, age5: 393 },
+            { district: 3,  total_hh: 1281, le110:  741, b110_150: 122, b150_200: 102, gt200:  316, under3: 1012, age3_4: 818,  age5: 219 },
+            { district: 4,  total_hh: 2314, le110: 1077, b110_150: 300, b150_200: 242, gt200:  693, under3: 1844, age3_4: 1122, age5: 678 },
+            { district: 5,  total_hh: 1699, le110:  836, b110_150: 178, b150_200: 154, gt200:  531, under3: 1558, age3_4: 742,  age5: 343 },
+            { district: 6,  total_hh: 2332, le110:  977, b110_150: 236, b150_200: 234, gt200:  886, under3: 1987, age3_4: 1275, age5: 312 },
+            { district: 7,  total_hh: 2810, le110: 1206, b110_150: 312, b150_200: 306, gt200:  986, under3: 2327, age3_4: 1226, age5: 632 },
+            { district: 8,  total_hh: 2873, le110: 1101, b110_150: 301, b150_200: 315, gt200: 1155, under3: 2317, age3_4: 1235, age5: 506 },
+            { district: 9,  total_hh: 2285, le110: 1064, b110_150: 264, b150_200: 232, gt200:  726, under3: 2076, age3_4: 1136, age5: 568 },
+            { district: 10, total_hh: 2205, le110: 1267, b110_150: 222, b150_200: 179, gt200:  536, under3: 2122, age3_4: 1206, age5: 626 },
+            { district: 11, total_hh: 2384, le110: 1255, b110_150: 295, b150_200: 232, gt200:  601, under3: 2527, age3_4: 1166, age5: 912 }
+        ];
+
+        const CORRIDORS = {
+            'Westside': [1, 4, 7],
+            'North/Central': [2, 3, 5, 6],
+            'South Central': [8, 9],
+            'Southeast': [10, 11]
+        };
+    </script>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef, useCallback } = React;
+
+        const App = () => {
+            const [data, setData] = useState([]);
+            const [activeScenario, setActiveScenario] = useState(null);
+
+            useEffect(() => {
+                if (window.CHILDCARE_DATA) setData(window.CHILDCARE_DATA);
+                else window.onDataLoad = () => setData(window.CHILDCARE_DATA);
+            }, []);
+
+            // Supply computation (same as landscape.html)
+            const supplyByDistrict = useMemo(() => {
+                const licensed = data.filter(f => f.facility_status === 'LICENSED');
+                const result = {};
+                for (let i = 1; i <= 11; i++) {
+                    const distStr = String(i);
+                    const inDist = licensed.filter(f => f.supervisor_district === distStr);
+                    const fccTypes = ['SMALL FAMILY CHILD CARE HOME', 'LARGE FAMILY CHILD CARE HOME'];
+                    result[i] = {
+                        totalCap: inDist.reduce((s, f) => s + (f.facility_capacity || 0), 0),
+                        elfaCap: inDist.filter(f => f.elfa_contracted === 'Yes').reduce((s, f) => s + (f.facility_capacity || 0), 0),
+                        elfaCount: inDist.filter(f => f.elfa_contracted === 'Yes').length,
+                        infantCap: inDist.filter(f => f.facility_type === 'INFANT CENTER').reduce((s, f) => s + (f.facility_capacity || 0), 0),
+                        fccCount: inDist.filter(f => fccTypes.includes(f.facility_type)).length,
+                        fccCap: inDist.filter(f => fccTypes.includes(f.facility_type)).reduce((s, f) => s + (f.facility_capacity || 0), 0),
+                        count: inDist.length
+                    };
+                }
+                result.total = {
+                    totalCap: licensed.reduce((s, f) => s + (f.facility_capacity || 0), 0),
+                    elfaCap: licensed.filter(f => f.elfa_contracted === 'Yes').reduce((s, f) => s + (f.facility_capacity || 0), 0),
+                    elfaCount: licensed.filter(f => f.elfa_contracted === 'Yes').length,
+                    infantCap: licensed.filter(f => f.facility_type === 'INFANT CENTER').reduce((s, f) => s + (f.facility_capacity || 0), 0),
+                    fccCount: licensed.filter(f => ['SMALL FAMILY CHILD CARE HOME', 'LARGE FAMILY CHILD CARE HOME'].includes(f.facility_type)).length,
+                    fccCap: licensed.filter(f => ['SMALL FAMILY CHILD CARE HOME', 'LARGE FAMILY CHILD CARE HOME'].includes(f.facility_type)).reduce((s, f) => s + (f.facility_capacity || 0), 0),
+                    count: licensed.length
+                };
+                return result;
+            }, [data]);
+
+            const demandTotals = useMemo(() => {
+                const t = { total_hh: 0, le110: 0, b110_150: 0, b150_200: 0, gt200: 0, under3: 0, age3_4: 0, age5: 0 };
+                DEMAND_DATA.forEach(d => { Object.keys(t).forEach(k => { t[k] += d[k]; }); });
+                t.under6 = t.under3 + t.age3_4 + t.age5;
+                return t;
+            }, []);
+
+            const corridorData = useMemo(() => {
+                return Object.entries(CORRIDORS).map(([name, dists]) => {
+                    const supply = {
+                        totalCap: dists.reduce((s, d) => s + (supplyByDistrict[d]?.totalCap || 0), 0),
+                        elfaCap: dists.reduce((s, d) => s + (supplyByDistrict[d]?.elfaCap || 0), 0),
+                        fccCount: dists.reduce((s, d) => s + (supplyByDistrict[d]?.fccCount || 0), 0),
+                        count: dists.reduce((s, d) => s + (supplyByDistrict[d]?.count || 0), 0),
+                    };
+                    const demand = { le110: 0, b110_150: 0, b150_200: 0, gt200: 0, under3: 0, age3_4: 0, age5: 0, total_hh: 0 };
+                    DEMAND_DATA.filter(d => dists.includes(d.district)).forEach(d => {
+                        Object.keys(demand).forEach(k => { demand[k] += d[k]; });
+                    });
+                    demand.under6 = demand.under3 + demand.age3_4 + demand.age5;
+                    return { name, dists, supply, demand };
+                });
+            }, [supplyByDistrict]);
+
+            if (!data.length) {
+                return React.createElement('div', { className: 'loading' },
+                    React.createElement('div', { className: 'spinner' }),
+                    React.createElement('div', null, 'Loading facility data...')
+                );
+            }
+
+            const le200Total = demandTotals.le110 + demandTotals.b110_150 + demandTotals.b150_200;
+            const totalCap = Math.round(supplyByDistrict.total?.totalCap || 0);
+            const elfaCap = Math.round(supplyByDistrict.total?.elfaCap || 0);
+            const elfaCount = supplyByDistrict.total?.elfaCount || 0;
+            const fccCount = supplyByDistrict.total?.fccCount || 0;
+
+            return React.createElement('div', null,
+                // Header
+                React.createElement('div', { className: 'header' },
+                    React.createElement('div', { className: 'header-content' },
+                        React.createElement('h1', null, 'SF ECE Policy Scenarios'),
+                        React.createElement('p', null, 'Aligned with CPAC policy priorities. Powered by live facility data.'),
+                        React.createElement('div', { className: 'header-pills' },
+                            React.createElement('div', { className: 'pill' },
+                                React.createElement('div', { className: 'pill-value' }, totalCap.toLocaleString()),
+                                React.createElement('div', { className: 'pill-label' }, 'Licensed Capacity')
+                            ),
+                            React.createElement('div', { className: 'pill' },
+                                React.createElement('div', { className: 'pill-value' }, elfaCount.toLocaleString()),
+                                React.createElement('div', { className: 'pill-label' }, 'ELFA Sites')
+                            ),
+                            React.createElement('div', { className: 'pill' },
+                                React.createElement('div', { className: 'pill-value' }, elfaCap.toLocaleString()),
+                                React.createElement('div', { className: 'pill-label' }, 'ELFA Capacity')
+                            ),
+                            React.createElement('div', { className: 'pill' },
+                                React.createElement('div', { className: 'pill-value' }, '1,150'),
+                                React.createElement('div', { className: 'pill-label' }, 'Waitlist (Mar 2026)')
+                            ),
+                            React.createElement('div', { className: 'pill' },
+                                React.createElement('div', { className: 'pill-value' }, fccCount.toLocaleString()),
+                                React.createElement('div', { className: 'pill-label' }, 'Licensed FCCs')
+                            ),
+                            React.createElement('div', { className: 'pill' },
+                                React.createElement('div', { className: 'pill-value' }, le200Total.toLocaleString()),
+                                React.createElement('div', { className: 'pill-label' }, 'HH \u2264200% AMI')
+                            )
+                        ),
+                        React.createElement('div', { className: 'data-source' }, 'Data: CDSS Facility Database \u2022 ACS 2020-2024 \u2022 MOHCD 2025 AMI \u2022 DEC \u2022 Updated Mar 2026')
+                    )
+                ),
+                // Main
+                React.createElement('div', { className: 'container' },
+                    // ELFA Tiers
+                    React.createElement('div', { className: 'elfa-tiers' },
+                        React.createElement('div', { className: 'elfa-tier active' },
+                            React.createElement('div', { className: 'ami' }, '\u2264110% AMI'),
+                            React.createElement('div', { className: 'benefit' }, 'FREE'),
+                            React.createElement('div', { className: 'note' }, 'Full tuition credit')
+                        ),
+                        React.createElement('div', { className: 'elfa-tier active' },
+                            React.createElement('div', { className: 'ami' }, '111-150% AMI'),
+                            React.createElement('div', { className: 'benefit' }, '100% Credit'),
+                            React.createElement('div', { className: 'note' }, 'Full tuition credit')
+                        ),
+                        React.createElement('div', { className: 'elfa-tier new' },
+                            React.createElement('div', { className: 'ami' }, '151-200% AMI'),
+                            React.createElement('div', { className: 'benefit' }, '50% Credit'),
+                            React.createElement('div', { className: 'note' }, 'Effective 7/1/2026')
+                        ),
+                        React.createElement('div', { className: 'elfa-tier' },
+                            React.createElement('div', { className: 'ami' }, '>200% AMI'),
+                            React.createElement('div', { className: 'benefit' }, 'Private Pay'),
+                            React.createElement('div', { className: 'note' }, 'Market rate')
+                        )
+                    ),
+                    // Scenario cards or detail
+                    activeScenario
+                        ? React.createElement(ScenarioDetail, { id: activeScenario, onBack: () => setActiveScenario(null), supplyByDistrict, demandTotals, corridorData, data })
+                        : React.createElement(ScenarioCards, { onSelect: setActiveScenario })
+                ),
+                // Footer
+                React.createElement('div', { className: 'footer' },
+                    'CPAC Policy Platform \u2022 FCCASF \u2022 ',
+                    React.createElement('a', { href: 'https://sfdec.org', target: '_blank' }, 'SF Department of Early Childhood'),
+                    ' \u2022 Data-driven advocacy for San Francisco families'
+                )
+            );
+        };
+
+        const ScenarioCards = ({ onSelect }) => {
+            const cards = [
+                { id: 'inclusion', cls: 'card-a', priority: 'CPAC Priority #1', title: 'Early Intervention & Inclusion', tagline: '"Every child deserves support from day one"',
+                  preview: [
+                    { cls: 'concern', text: '\u2717 Families with special needs children lack coordinated services' },
+                    { cls: 'concern', text: '\u2717 Mental health support gaps for young children' },
+                    { cls: 'question', text: '? How many children need early intervention but aren\u2019t getting it?' }
+                  ]},
+                { id: 'geographic', cls: 'card-b', priority: 'Geographic Balance', title: 'Supply & Demand by Geography', tagline: '"Not all neighborhoods are the same"',
+                  preview: [
+                    { cls: 'concern', text: '\u2717 Oversaturated areas: providers closing from low enrollment' },
+                    { cls: 'win', text: '\u2713 Underserved areas: opportunity for targeted expansion' },
+                    { cls: 'question', text: '? Blanket expansion vs targeted investment' }
+                  ]},
+                { id: 'propc', cls: 'card-c', priority: 'CPAC Priority #3', title: 'Baby Prop C Accountability', tagline: '"$574M in reserves \u2014 now what?"',
+                  preview: [
+                    { cls: 'win', text: '\u2713 200% AMI expansion: promise being fulfilled' },
+                    { cls: 'concern', text: '\u2717 Waitlist grew from 738 to 1,150' },
+                    { cls: 'question', text: '? How long do reserves last at expanded rate?' }
+                  ]},
+                { id: 'workforce', cls: 'card-d', priority: 'CPAC Priority #4', title: 'Workforce & Career Pathways', tagline: '"Quality care requires stable, supported educators"',
+                  preview: [
+                    { cls: 'win', text: '\u2713 Up to 49% wage increases implemented' },
+                    { cls: 'concern', text: '\u2717 Retention remains a challenge' },
+                    { cls: 'question', text: '? Career pathways and working conditions' }
+                  ]},
+                { id: 'data', cls: 'card-e', priority: 'CPAC Priority #2', title: 'Cross-Agency Coordination & Data', tagline: '"We can\u2019t improve what we don\u2019t measure"',
+                  preview: [
+                    { cls: 'concern', text: '\u2717 $337M invested but ROI unknown' },
+                    { cls: 'concern', text: '\u2717 ECE experience data captured but not reported' },
+                    { cls: 'question', text: '? Is the investment improving outcomes?' }
+                  ]}
+            ];
+
+            return React.createElement('div', null,
+                React.createElement('div', { className: 'cards-header' },
+                    React.createElement('div', { className: 'cpac-badge' }, 'CPAC POLICY PLATFORM'),
+                    React.createElement('h2', null, 'Explore Policy Scenarios'),
+                    React.createElement('p', null, 'Each scenario explores a different lens on SF\u2019s early care and education system.')
+                ),
+                React.createElement('div', { className: 'scenario-cards' },
+                    cards.map(c => React.createElement('div', { key: c.id, className: 'scenario-card ' + c.cls, onClick: () => onSelect(c.id) },
+                        React.createElement('div', { className: 'priority-num' }, c.priority),
+                        React.createElement('h3', null, c.title),
+                        React.createElement('div', { className: 'tagline' }, c.tagline),
+                        React.createElement('div', { className: 'preview' },
+                            c.preview.map((p, i) => React.createElement('div', { key: i, className: p.cls }, p.text))
+                        ),
+                        React.createElement('button', { className: 'explore-btn' }, 'Explore \u2192')
+                    ))
+                )
+            );
+        };
+
+        const ScenarioDetail = ({ id, onBack, supplyByDistrict, demandTotals, corridorData, data }) => {
+            const scenarios = {
+                inclusion: { title: 'Early Intervention & Inclusion', tagline: 'CPAC Priority #1: Every child deserves support from day one', color: '#e91e63' },
+                geographic: { title: 'Supply & Demand by Geography', tagline: 'Where expansion helps vs where it hurts providers', color: '#2196F3' },
+                propc: { title: 'Baby Prop C Financing & Accountability', tagline: 'CPAC Priority #3: The promise is being fulfilled \u2014 but questions remain', color: '#FF9800' },
+                workforce: { title: 'Workforce Compensation & Career Pathways', tagline: 'CPAC Priority #4: Quality care requires stable, supported educators', color: '#9C27B0' },
+                data: { title: 'Cross-Agency Coordination & Data Gaps', tagline: 'CPAC Priority #2: We can\u2019t improve what we don\u2019t measure', color: '#009688' }
+            };
+
+            const s = scenarios[id] || scenarios.inclusion;
+
+            return React.createElement('div', null,
+                React.createElement('button', { className: 'back-btn', onClick: onBack }, '\u2190 Back to All Scenarios'),
+                React.createElement('div', { className: 'detail-header', style: { borderLeftColor: s.color } },
+                    React.createElement('h1', null, s.title),
+                    React.createElement('div', { className: 'tagline' }, s.tagline)
+                ),
+                id === 'inclusion' && React.createElement(ScenarioInclusion, null),
+                id === 'geographic' && React.createElement(ScenarioGeographic, { supplyByDistrict, demandTotals, corridorData, data }),
+                id === 'propc' && React.createElement(ScenarioPropC, { supplyByDistrict }),
+                id === 'workforce' && React.createElement(ScenarioWorkforce, null),
+                id === 'data' && React.createElement(ScenarioData, null)
+            );
+        };
+
+        // ===== SCENARIO A: Early Intervention & Inclusion =====
+        const ScenarioInclusion = () => {
+            return React.createElement('div', null,
+                React.createElement('div', { className: 'content-section full-width', style: { marginBottom: 16 } },
+                    React.createElement('div', { className: 'section-header' }, 'The Challenge: Inclusion Gaps in Early Care'),
+                    React.createElement('div', { className: 'flow-diagram' },
+                        React.createElement('div', { className: 'flow-step negative' },
+                            React.createElement('strong', null, 'Families with special needs children face fragmented services'),
+                            React.createElement('span', null, 'No single point of coordination between early intervention, child care, and mental health services. Families navigate multiple agencies alone.')
+                        ),
+                        React.createElement('div', { className: 'flow-step negative' },
+                            React.createElement('strong', null, 'Providers lack training and support for inclusion'),
+                            React.createElement('span', null, 'FCCs and small centers often don\u2019t have resources for children with developmental delays, behavioral challenges, or disabilities.')
+                        ),
+                        React.createElement('div', { className: 'flow-step negative' },
+                            React.createElement('strong', null, 'Mental health support for young children is scarce'),
+                            React.createElement('span', null, 'Early childhood mental health consultation is limited. Trauma-informed care requires specialized training many providers haven\u2019t received.')
+                        ),
+                        React.createElement('div', { className: 'flow-step warning' },
+                            React.createElement('strong', null, 'Early intervention delays compound over time'),
+                            React.createElement('span', null, 'Children who don\u2019t receive support 0-3 enter kindergarten further behind. The cost of remediation far exceeds prevention.')
+                        ),
+                        React.createElement('div', { className: 'flow-step positive' },
+                            React.createElement('strong', null, 'What\u2019s needed: coordinated early intervention system'),
+                            React.createElement('span', null, 'One intake point, shared information between agencies, provider training and coaching, mental health consultation embedded in ECE settings.')
+                        )
+                    )
+                ),
+                React.createElement('div', { className: 'content-grid' },
+                    React.createElement('div', { className: 'content-section' },
+                        React.createElement('div', { className: 'section-header' }, 'Who\u2019s Affected'),
+                        React.createElement('div', { className: 'impact-category benefits' },
+                            React.createElement('h4', null, '\u2713 IF ADDRESSED:'),
+                            React.createElement('ul', null,
+                                React.createElement('li', null, 'Children with disabilities get early, coordinated support'),
+                                React.createElement('li', null, 'Families don\u2019t have to navigate the system alone'),
+                                React.createElement('li', null, 'Providers get training and coaching to serve all children'),
+                                React.createElement('li', null, 'Fewer children enter K-12 needing costly special education')
+                            )
+                        ),
+                        React.createElement('div', { className: 'impact-category concerns' },
+                            React.createElement('h4', null, '\u2717 CURRENT GAPS:'),
+                            React.createElement('ul', null,
+                                React.createElement('li', null, 'No coordinated intake across DEC, SFUSD, Regional Center'),
+                                React.createElement('li', null, 'FCCs often excluded from inclusion support programs'),
+                                React.createElement('li', null, 'Mental health consultation waitlists'),
+                                React.createElement('li', null, 'Data on prevalence of special needs in ECE not collected')
+                            )
+                        )
+                    ),
+                    React.createElement('div', { className: 'content-section' },
+                        React.createElement('div', { className: 'section-header' }, 'Policy Actions'),
+                        React.createElement('div', { className: 'callout info' },
+                            React.createElement('h4', null, 'CPAC Priority #1: Early Intervention & Inclusion'),
+                            React.createElement('p', null, 'This is the top priority in CPAC\u2019s public policy platform. The community is calling for:'),
+                            React.createElement('ul', { style: { marginLeft: 20, marginTop: 8, lineHeight: 1.8 } },
+                                React.createElement('li', null, 'Expanded early intervention services accessible through all ECE settings'),
+                                React.createElement('li', null, 'Mental health consultation embedded in FCCs and centers'),
+                                React.createElement('li', null, 'Inclusion specialists available to support providers'),
+                                React.createElement('li', null, 'Cross-agency data sharing on children receiving services')
+                            )
+                        ),
+                        React.createElement('div', { className: 'callout warning' },
+                            React.createElement('h4', null, 'Data Gap'),
+                            React.createElement('p', null, 'We don\u2019t have reliable data on how many children in SF\u2019s ECE system need early intervention, mental health support, or inclusion services. Without this, we can\u2019t quantify the gap or measure progress.')
+                        )
+                    )
+                ),
+                React.createElement('div', { className: 'content-section full-width', style: { marginTop: 16 } },
+                    React.createElement('div', { className: 'section-header' }, 'Key Messages'),
+                    React.createElement('div', { className: 'quote-box' },
+                        React.createElement('div', { className: 'quote' }, '"Inclusion isn\u2019t optional \u2014 it\u2019s a right. Every child in San Francisco deserves access to early care that meets their needs, whether that\u2019s a family child care home or a center."'),
+                        React.createElement('div', { className: 'quote' }, '"We spend far more on remediation in K-12 than we would on early intervention 0-3. The math is clear: invest early."')
+                    )
+                )
+            );
+        };
+
+        // ===== SCENARIO B: Geographic Supply/Demand Balance =====
+        const ScenarioGeographic = ({ supplyByDistrict, demandTotals, corridorData, data }) => {
+            const [geoView, setGeoView] = useState('district');
+            const chartRef = useRef(null);
+            const chartInst = useRef(null);
+
+            // Compute per-district ratios
+            const districtRows = useMemo(() => {
+                return DEMAND_DATA.map(d => {
+                    const s = supplyByDistrict[d.district] || {};
+                    const under6 = d.under3 + d.age3_4 + d.age5;
+                    const le200 = d.le110 + d.b110_150 + d.b150_200;
+                    const slotsPerChild = under6 > 0 ? (s.totalCap || 0) / under6 : 0;
+                    const elfaPerEligible = le200 > 0 ? (s.elfaCap || 0) / le200 : 0;
+                    return {
+                        district: d.district,
+                        totalCap: Math.round(s.totalCap || 0),
+                        elfaCap: Math.round(s.elfaCap || 0),
+                        fccCount: s.fccCount || 0,
+                        count: s.count || 0,
+                        under6,
+                        le200,
+                        slotsPerChild: slotsPerChild.toFixed(2),
+                        elfaPerEligible: elfaPerEligible.toFixed(2),
+                        saturated: slotsPerChild > 0.8
+                    };
+                });
+            }, [supplyByDistrict]);
+
+            const corridorRows = useMemo(() => {
+                return corridorData.map(c => {
+                    const le200 = c.demand.le110 + c.demand.b110_150 + c.demand.b150_200;
+                    const slotsPerChild = c.demand.under6 > 0 ? c.supply.totalCap / c.demand.under6 : 0;
+                    const elfaPerEligible = le200 > 0 ? c.supply.elfaCap / le200 : 0;
+                    return {
+                        name: c.name,
+                        dists: c.dists.join(', '),
+                        totalCap: Math.round(c.supply.totalCap),
+                        elfaCap: Math.round(c.supply.elfaCap),
+                        fccCount: c.supply.fccCount,
+                        count: c.supply.count,
+                        under6: c.demand.under6,
+                        le200,
+                        slotsPerChild: slotsPerChild.toFixed(2),
+                        elfaPerEligible: elfaPerEligible.toFixed(2)
+                    };
+                });
+            }, [corridorData]);
+
+            // Chart
+            useEffect(() => {
+                if (!chartRef.current) return;
+                if (chartInst.current) chartInst.current.destroy();
+
+                if (geoView === 'district') {
+                    const labels = districtRows.map(d => 'D' + d.district);
+                    chartInst.current = new Chart(chartRef.current, {
+                        type: 'bar',
+                        data: {
+                            labels,
+                            datasets: [
+                                { label: 'ELFA Capacity', data: districtRows.map(d => d.elfaCap), backgroundColor: '#7b2d8e', stack: 'supply' },
+                                { label: 'Non-ELFA Licensed', data: districtRows.map(d => d.totalCap - d.elfaCap), backgroundColor: 'rgba(66,133,244,0.6)', stack: 'supply' },
+                                { label: 'HH \u2264110% AMI', data: DEMAND_DATA.map(d => d.le110), backgroundColor: '#1B6B4A', stack: 'demand' },
+                                { label: 'HH 110-150% AMI', data: DEMAND_DATA.map(d => d.b110_150), backgroundColor: '#2D8F64', stack: 'demand' },
+                                { label: 'HH 150-200% AMI', data: DEMAND_DATA.map(d => d.b150_200), backgroundColor: '#E07B3C', stack: 'demand' }
+                            ]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } } },
+                            scales: { y: { beginAtZero: true, stacked: true, ticks: { callback: v => v.toLocaleString() } }, x: { stacked: true } }
+                        }
+                    });
+                } else {
+                    const labels = corridorRows.map(c => c.name);
+                    chartInst.current = new Chart(chartRef.current, {
+                        type: 'bar',
+                        data: {
+                            labels,
+                            datasets: [
+                                { label: 'ELFA Capacity', data: corridorRows.map(c => c.elfaCap), backgroundColor: '#7b2d8e', stack: 'supply' },
+                                { label: 'Non-ELFA Licensed', data: corridorRows.map(c => c.totalCap - c.elfaCap), backgroundColor: 'rgba(66,133,244,0.6)', stack: 'supply' },
+                                { label: 'HH \u2264110% AMI', data: corridorData.map(c => c.demand.le110), backgroundColor: '#1B6B4A', stack: 'demand' },
+                                { label: 'HH 110-150% AMI', data: corridorData.map(c => c.demand.b110_150), backgroundColor: '#2D8F64', stack: 'demand' },
+                                { label: 'HH 150-200% AMI', data: corridorData.map(c => c.demand.b150_200), backgroundColor: '#E07B3C', stack: 'demand' }
+                            ]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } } },
+                            scales: { y: { beginAtZero: true, stacked: true, ticks: { callback: v => v.toLocaleString() } }, x: { stacked: true } }
+                        }
+                    });
+                }
+            }, [geoView, districtRows, corridorRows, corridorData]);
+
+            const totalUnder6 = demandTotals.under6;
+            const totalCap = Math.round(supplyByDistrict.total?.totalCap || 0);
+            const citywideRatio = totalUnder6 > 0 ? (totalCap / totalUnder6).toFixed(2) : 0;
+
+            return React.createElement('div', null,
+                React.createElement('div', { className: 'content-section full-width', style: { marginBottom: 16 } },
+                    React.createElement('div', { className: 'section-header' }, 'The Challenge: Uneven Supply Across San Francisco'),
+                    React.createElement('div', { className: 'flow-diagram' },
+                        React.createElement('div', { className: 'flow-step negative' },
+                            React.createElement('strong', null, 'Blanket expansion dilutes supply in already-saturated areas'),
+                            React.createElement('span', null, 'When new capacity is added where supply already exceeds demand, existing providers lose enrollment. This leads to closures \u2014 a net loss.')
+                        ),
+                        React.createElement('div', { className: 'flow-step negative' },
+                            React.createElement('strong', null, 'Providers close from low enrollment, not low quality'),
+                            React.createElement('span', null, 'In oversaturated districts, providers can\u2019t fill spots. They close \u2014 taking infant/toddler capacity with them. The system contracts where it\u2019s already strong.')
+                        ),
+                        React.createElement('div', { className: 'flow-step positive' },
+                            React.createElement('strong', null, 'Underserved areas need targeted investment'),
+                            React.createElement('span', null, 'Some districts have far fewer slots per child. Targeted expansion here creates real new access without harming existing providers.')
+                        ),
+                        React.createElement('div', { className: 'flow-step warning' },
+                            React.createElement('strong', null, 'Data limitation: licensed capacity \u2260 available enrollment'),
+                            React.createElement('span', null, 'A facility licensed for 50 may only enroll 35. Occupancy rates vary. These ratios show licensed capacity, not actual availability.')
+                        )
+                    )
+                ),
+                // Stats
+                React.createElement('div', { className: 'stats-box' },
+                    React.createElement('div', { className: 'stat-item' },
+                        React.createElement('div', { className: 'stat-value highlight' }, citywideRatio),
+                        React.createElement('div', { className: 'stat-label' }, 'Slots per child (citywide)')
+                    ),
+                    React.createElement('div', { className: 'stat-item' },
+                        React.createElement('div', { className: 'stat-value' }, totalCap.toLocaleString()),
+                        React.createElement('div', { className: 'stat-label' }, 'Licensed capacity')
+                    ),
+                    React.createElement('div', { className: 'stat-item' },
+                        React.createElement('div', { className: 'stat-value' }, totalUnder6.toLocaleString()),
+                        React.createElement('div', { className: 'stat-label' }, 'Children 0-5')
+                    ),
+                    React.createElement('div', { className: 'stat-item' },
+                        React.createElement('div', { className: 'stat-value' }, (supplyByDistrict.total?.elfaCap || 0).toLocaleString()),
+                        React.createElement('div', { className: 'stat-label' }, 'ELFA capacity')
+                    )
+                ),
+                // Toggle
+                React.createElement('div', { className: 'toggle-bar' },
+                    React.createElement('button', { className: 'toggle-btn' + (geoView === 'district' ? ' active' : ''), onClick: () => setGeoView('district') }, 'By District'),
+                    React.createElement('button', { className: 'toggle-btn' + (geoView === 'corridor' ? ' active' : ''), onClick: () => setGeoView('corridor') }, 'By Corridor')
+                ),
+                // Chart
+                React.createElement('div', { className: 'content-section full-width', style: { marginBottom: 16 } },
+                    React.createElement('div', { className: 'section-header' }, geoView === 'district' ? 'Licensed Supply vs ELFA-Eligible Demand by District' : 'Licensed Supply vs ELFA-Eligible Demand by Corridor'),
+                    React.createElement('div', { className: 'chart-subtitle' }, 'Stacked bars compare licensed capacity (ELFA + non-ELFA) against ELFA-eligible households by income tier'),
+                    React.createElement('div', { className: 'chart-wrap', style: { height: 350 } },
+                        React.createElement('canvas', { ref: chartRef })
+                    )
+                ),
+                // Table
+                React.createElement('div', { className: 'content-section full-width', style: { marginBottom: 16 } },
+                    React.createElement('div', { className: 'section-header' }, geoView === 'district' ? 'District Supply/Demand Ratios' : 'Corridor Supply/Demand Ratios'),
+                    React.createElement('div', { style: { overflowX: 'auto' } },
+                        geoView === 'district'
+                            ? React.createElement('table', { className: 'data-table' },
+                                React.createElement('thead', null,
+                                    React.createElement('tr', null,
+                                        React.createElement('th', null, 'District'),
+                                        React.createElement('th', null, 'Facilities'),
+                                        React.createElement('th', null, 'Licensed Cap'),
+                                        React.createElement('th', null, 'ELFA Cap'),
+                                        React.createElement('th', null, 'FCCs'),
+                                        React.createElement('th', null, 'Children 0-5'),
+                                        React.createElement('th', null, 'HH \u2264200%'),
+                                        React.createElement('th', null, 'Slots/Child'),
+                                        React.createElement('th', null, 'ELFA/Eligible')
+                                    )
+                                ),
+                                React.createElement('tbody', null,
+                                    districtRows.map(d => React.createElement('tr', { key: d.district },
+                                        React.createElement('td', null, 'D' + d.district),
+                                        React.createElement('td', null, d.count),
+                                        React.createElement('td', null, d.totalCap.toLocaleString()),
+                                        React.createElement('td', null, d.elfaCap.toLocaleString()),
+                                        React.createElement('td', null, d.fccCount),
+                                        React.createElement('td', null, d.under6.toLocaleString()),
+                                        React.createElement('td', null, d.le200.toLocaleString()),
+                                        React.createElement('td', { className: parseFloat(d.slotsPerChild) > 0.8 ? 'high' : parseFloat(d.slotsPerChild) < 0.5 ? 'low' : '' }, d.slotsPerChild),
+                                        React.createElement('td', null, d.elfaPerEligible)
+                                    ))
+                                ),
+                                React.createElement('tfoot', null,
+                                    React.createElement('tr', null,
+                                        React.createElement('td', null, 'Total'),
+                                        React.createElement('td', null, (supplyByDistrict.total?.count || 0)),
+                                        React.createElement('td', null, totalCap.toLocaleString()),
+                                        React.createElement('td', null, (supplyByDistrict.total?.elfaCap || 0).toLocaleString()),
+                                        React.createElement('td', null, (supplyByDistrict.total?.fccCount || 0)),
+                                        React.createElement('td', null, totalUnder6.toLocaleString()),
+                                        React.createElement('td', null, (demandTotals.le110 + demandTotals.b110_150 + demandTotals.b150_200).toLocaleString()),
+                                        React.createElement('td', null, citywideRatio),
+                                        React.createElement('td', null, ((supplyByDistrict.total?.elfaCap || 0) / (demandTotals.le110 + demandTotals.b110_150 + demandTotals.b150_200)).toFixed(2))
+                                    )
+                                )
+                            )
+                            : React.createElement('table', { className: 'data-table' },
+                                React.createElement('thead', null,
+                                    React.createElement('tr', null,
+                                        React.createElement('th', null, 'Corridor'),
+                                        React.createElement('th', null, 'Districts'),
+                                        React.createElement('th', null, 'Facilities'),
+                                        React.createElement('th', null, 'Licensed Cap'),
+                                        React.createElement('th', null, 'ELFA Cap'),
+                                        React.createElement('th', null, 'Children 0-5'),
+                                        React.createElement('th', null, 'HH \u2264200%'),
+                                        React.createElement('th', null, 'Slots/Child'),
+                                        React.createElement('th', null, 'ELFA/Eligible')
+                                    )
+                                ),
+                                React.createElement('tbody', null,
+                                    corridorRows.map(c => React.createElement('tr', { key: c.name },
+                                        React.createElement('td', null, c.name),
+                                        React.createElement('td', { style: { fontWeight: 400 } }, c.dists),
+                                        React.createElement('td', null, c.count),
+                                        React.createElement('td', null, c.totalCap.toLocaleString()),
+                                        React.createElement('td', null, c.elfaCap.toLocaleString()),
+                                        React.createElement('td', null, c.under6.toLocaleString()),
+                                        React.createElement('td', null, c.le200.toLocaleString()),
+                                        React.createElement('td', null, c.slotsPerChild),
+                                        React.createElement('td', null, c.elfaPerEligible)
+                                    ))
+                                )
+                            )
+                    ),
+                    React.createElement('div', { className: 'callout warning', style: { marginTop: 12 } },
+                        React.createElement('h4', null, 'Reading the Table'),
+                        React.createElement('p', null, React.createElement('strong', null, 'Slots/Child'), ' > 0.8 = high supply relative to child population (potential oversaturation). '),
+                        React.createElement('p', null, React.createElement('strong', null, 'Slots/Child'), ' < 0.5 = low supply (underserved). '),
+                        React.createElement('p', null, React.createElement('strong', null, 'ELFA/Eligible'), ' = ELFA capacity per ELFA-eligible household. Higher = more coverage. '),
+                        React.createElement('p', null, 'Note: These ratios use licensed capacity, not actual enrollment. A facility licensed for 50 may only enroll 35.')
+                    )
+                ),
+                // Key insight
+                React.createElement('div', { className: 'content-section full-width' },
+                    React.createElement('div', { className: 'section-header' }, 'Key Messages'),
+                    React.createElement('div', { className: 'quote-box' },
+                        React.createElement('div', { className: 'quote' }, '"Adding capacity in already-saturated areas doesn\u2019t help families \u2014 it puts existing providers out of business. Targeted investment in underserved neighborhoods creates real new access."'),
+                        React.createElement('div', { className: 'quote' }, '"When a family child care home closes in an oversaturated area, we don\u2019t just lose preschool spots \u2014 we lose infant and toddler capacity that\u2019s almost impossible to replace."')
+                    )
+                )
+            );
+        };
+
+        // ===== SCENARIO C: Baby Prop C =====
+        const ScenarioPropC = ({ supplyByDistrict }) => {
+            return React.createElement('div', null,
+                React.createElement('div', { className: 'content-section full-width', style: { marginBottom: 16 } },
+                    React.createElement('div', { className: 'section-header' }, 'The Promise & Progress'),
+                    React.createElement('div', { className: 'comparison-table' },
+                        React.createElement('table', null,
+                            React.createElement('thead', null,
+                                React.createElement('tr', null,
+                                    React.createElement('th', null, 'What Voters Approved (2018)'),
+                                    React.createElement('th', null, 'Status (March 2026)')
+                                )
+                            ),
+                            React.createElement('tbody', null,
+                                React.createElement('tr', null,
+                                    React.createElement('td', null, 'Subsidies to families up to ', React.createElement('strong', null, '200% AMI')),
+                                    React.createElement('td', { style: { color: '#2e7d32' } }, React.createElement('strong', null, '\u2713 Expanded'), ' \u2014 151-200% AMI now receiving subsidies')
+                                ),
+                                React.createElement('tr', null,
+                                    React.createElement('td', null, 'Reduce cost burden for middle-class families'),
+                                    React.createElement('td', { style: { color: '#e65100' } }, 'Waitlist grew from 738 to ', React.createElement('strong', null, '1,150'), ' children')
+                                ),
+                                React.createElement('tr', null,
+                                    React.createElement('td', null, 'Universal access as a goal'),
+                                    React.createElement('td', { style: { color: '#e65100' } }, 'Expansion active but ', React.createElement('strong', null, 'demand outpacing supply'))
+                                ),
+                                React.createElement('tr', null,
+                                    React.createElement('td', null, 'Funds to be deployed'),
+                                    React.createElement('td', { style: { color: '#e65100' } }, '$574M in reserves \u2014 being drawn down. ', React.createElement('strong', null, 'Sustainability?'))
+                                )
+                            )
+                        )
+                    ),
+                    React.createElement('div', { className: 'flow-diagram' },
+                        React.createElement('div', { className: 'flow-step positive' },
+                            React.createElement('strong', null, '200% AMI expansion is now active'),
+                            React.createElement('span', null, 'Families earning up to ~$305K (family of 4) now eligible for tuition credits. This is the promise of Baby Prop C being fulfilled.')
+                        ),
+                        React.createElement('div', { className: 'flow-step warning' },
+                            React.createElement('strong', null, 'Waitlist grew despite expansion'),
+                            React.createElement('span', null, 'From 738 (Nov 2025) to 1,150 (Mar 2026). More families now eligible = more demand. But physical capacity hasn\u2019t kept up.')
+                        ),
+                        React.createElement('div', { className: 'flow-step warning' },
+                            React.createElement('strong', null, 'Reserve sustainability is unknown'),
+                            React.createElement('span', null, '$574M in accumulated reserves. At the expanded rate, how many years does this last? DEC hasn\u2019t published financial modeling.')
+                        ),
+                        React.createElement('div', { className: 'flow-step question' },
+                            React.createElement('strong', null, 'Accountability: What transparency is needed?'),
+                            React.createElement('span', null, 'CPAC is asking for: detailed reserve breakdown, enrollment projections by AMI tier, cost per child, timeline for full utilization.')
+                        )
+                    )
+                ),
+                React.createElement('div', { className: 'content-grid' },
+                    React.createElement('div', { className: 'content-section' },
+                        React.createElement('div', { className: 'section-header' }, 'The Numbers'),
+                        React.createElement('div', { className: 'stats-box' },
+                            React.createElement('div', { className: 'stat-item' },
+                                React.createElement('div', { className: 'stat-value' }, '$574M'),
+                                React.createElement('div', { className: 'stat-label' }, 'Reserves accumulated')
+                            ),
+                            React.createElement('div', { className: 'stat-item' },
+                                React.createElement('div', { className: 'stat-value negative' }, '1,150'),
+                                React.createElement('div', { className: 'stat-label' }, 'Children on waitlist')
+                            ),
+                            React.createElement('div', { className: 'stat-item' },
+                                React.createElement('div', { className: 'stat-value highlight' }, (supplyByDistrict.total?.elfaCap || 0).toLocaleString()),
+                                React.createElement('div', { className: 'stat-label' }, 'ELFA capacity (live)')
+                            ),
+                            React.createElement('div', { className: 'stat-item' },
+                                React.createElement('div', { className: 'stat-value highlight' }, (supplyByDistrict.total?.elfaCount || 0).toLocaleString()),
+                                React.createElement('div', { className: 'stat-label' }, 'ELFA sites (live)')
+                            )
+                        ),
+                        React.createElement('div', { className: 'callout info' },
+                            React.createElement('h4', null, 'What CPAC Is Asking For'),
+                            React.createElement('p', null, '\u2022 Detailed budget breakdown of reserves'),
+                            React.createElement('p', null, '\u2022 Enrollment projections for 151-200% AMI'),
+                            React.createElement('p', null, '\u2022 Financial modeling for expansion sustainability'),
+                            React.createElement('p', null, '\u2022 Timeline for full utilization of funds')
+                        )
+                    ),
+                    React.createElement('div', { className: 'content-section' },
+                        React.createElement('div', { className: 'section-header' }, 'Impact Assessment'),
+                        React.createElement('div', { className: 'impact-category benefits' },
+                            React.createElement('h4', null, '\u2713 PROGRESS:'),
+                            React.createElement('ul', null,
+                                React.createElement('li', null, '200% AMI expansion now active'),
+                                React.createElement('li', null, 'Middle-class families receiving relief'),
+                                React.createElement('li', null, 'Providers gaining more subsidized families'),
+                                React.createElement('li', null, 'Voter intent from 2018 being honored')
+                            )
+                        ),
+                        React.createElement('div', { className: 'impact-category concerns' },
+                            React.createElement('h4', null, '\u2717 REMAINING CONCERNS:'),
+                            React.createElement('ul', null,
+                                React.createElement('li', null, 'Waitlist growing, not shrinking'),
+                                React.createElement('li', null, 'Reserve burn rate not transparent'),
+                                React.createElement('li', null, 'Physical capacity not expanding fast enough'),
+                                React.createElement('li', null, 'Provider closures counteracting expansion')
+                            )
+                        )
+                    )
+                ),
+                React.createElement('div', { className: 'content-section full-width', style: { marginTop: 16 } },
+                    React.createElement('div', { className: 'section-header' }, 'Key Voices'),
+                    React.createElement('div', { className: 'quote-box' },
+                        React.createElement('h4', null, 'What drove the expansion:'),
+                        React.createElement('div', { className: 'quote' }, '"It\u2019s bewildering to me why we are not serving 200% AMI. At this point there\u2019s no excuse. We have to move quickly."', React.createElement('br'), React.createElement('strong', null, '\u2014 Norman Yee'), ', former Board President & Baby Prop C co-author'),
+                        React.createElement('div', { className: 'quote' }, '"Here we have this pot that has $500 million sitting in it, that\u2019s been growing every year because of the interest accrued, that we\u2019re not spending. But the most important part is that we don\u2019t have a plan to spend it. That\u2019s the worst part."', React.createElement('br'), React.createElement('strong', null, '\u2014 Supervisor Myrna Melgar')),
+                        React.createElement('div', { className: 'quote' }, '"Families earning 151-200% AMI receive no tuition credit whatsoever, despite being the explicit focus of the original 2018 ballot measure."', React.createElement('br'), React.createElement('strong', null, '\u2014 Yensing Sihapanya'), ', CPAC Chair')
+                    )
+                )
+            );
+        };
+
+        // ===== SCENARIO D: Workforce =====
+        const ScenarioWorkforce = () => {
+            return React.createElement('div', null,
+                React.createElement('div', { className: 'content-section full-width', style: { marginBottom: 16 } },
+                    React.createElement('div', { className: 'section-header' }, 'The Challenge: Workforce Stability'),
+                    React.createElement('div', { className: 'flow-diagram' },
+                        React.createElement('div', { className: 'flow-step positive' },
+                            React.createElement('strong', null, 'Significant wage increases already implemented'),
+                            React.createElement('span', null, 'Up to 49% increases for ECE workers. This addresses a decades-long underpayment crisis. Quality care requires fairly compensated educators.')
+                        ),
+                        React.createElement('div', { className: 'flow-step warning' },
+                            React.createElement('strong', null, 'Retention remains a challenge'),
+                            React.createElement('span', null, 'Even with raises, ECE wages remain below comparable K-12 positions. Benefits, job security, and career advancement matter as much as pay.')
+                        ),
+                        React.createElement('div', { className: 'flow-step negative' },
+                            React.createElement('strong', null, 'FCC providers face unique challenges'),
+                            React.createElement('span', null, 'FCC owners are small business operators. They pay their own benefits, manage their own facilities, and often work 10-12 hour days. Wage increases for center staff don\u2019t directly help them.')
+                        ),
+                        React.createElement('div', { className: 'flow-step question' },
+                            React.createElement('strong', null, 'Career pathways: what does growth look like?'),
+                            React.createElement('span', null, 'ECE educators need clear career ladders \u2014 from assistant to lead to director to specialist. Professional development must be accessible and compensated.')
+                        )
+                    )
+                ),
+                React.createElement('div', { className: 'content-grid' },
+                    React.createElement('div', { className: 'content-section' },
+                        React.createElement('div', { className: 'section-header' }, 'Key Issues'),
+                        React.createElement('div', { className: 'impact-category benefits' },
+                            React.createElement('h4', null, '\u2713 PROGRESS:'),
+                            React.createElement('ul', null,
+                                React.createElement('li', null, 'Up to 49% wage increases implemented'),
+                                React.createElement('li', null, 'Recognition that ECE is professional work'),
+                                React.createElement('li', null, 'Workforce registry improvements'),
+                                React.createElement('li', null, 'Training and PD opportunities expanding')
+                            )
+                        ),
+                        React.createElement('div', { className: 'impact-category concerns' },
+                            React.createElement('h4', null, '\u2717 REMAINING GAPS:'),
+                            React.createElement('ul', null,
+                                React.createElement('li', null, 'Benefits (health, retirement) still inadequate'),
+                                React.createElement('li', null, 'Career ladders unclear or inaccessible'),
+                                React.createElement('li', null, 'FCC providers as business owners need different support'),
+                                React.createElement('li', null, 'Working conditions: hours, ratios, admin burden'),
+                                React.createElement('li', null, 'Pipeline: not enough new educators entering the field')
+                            )
+                        )
+                    ),
+                    React.createElement('div', { className: 'content-section' },
+                        React.createElement('div', { className: 'section-header' }, 'Why This Matters'),
+                        React.createElement('div', { className: 'callout info' },
+                            React.createElement('h4', null, 'CPAC Priority #4'),
+                            React.createElement('p', null, 'Workforce compensation, working conditions, and career pathways are foundational to system quality. You can\u2019t expand capacity if educators leave the field.'),
+                            React.createElement('p', null, 'Every provider closure represents lost institutional knowledge, trusted relationships with families, and community infrastructure.')
+                        ),
+                        React.createElement('div', { className: 'stats-box' },
+                            React.createElement('div', { className: 'stat-item' },
+                                React.createElement('div', { className: 'stat-value positive' }, '+49%'),
+                                React.createElement('div', { className: 'stat-label' }, 'Max wage increase')
+                            ),
+                            React.createElement('div', { className: 'stat-item' },
+                                React.createElement('div', { className: 'stat-value' }, '$24,806'),
+                                React.createElement('div', { className: 'stat-label' }, '/year preschool tuition')
+                            ),
+                            React.createElement('div', { className: 'stat-item' },
+                                React.createElement('div', { className: 'stat-value' }, '$31,544'),
+                                React.createElement('div', { className: 'stat-label' }, '/year infant care')
+                            )
+                        )
+                    )
+                ),
+                React.createElement('div', { className: 'content-section full-width', style: { marginTop: 16 } },
+                    React.createElement('div', { className: 'section-header' }, 'Key Messages'),
+                    React.createElement('div', { className: 'quote-box' },
+                        React.createElement('div', { className: 'quote' }, '"You can\u2019t build a quality early care system on an unstable workforce. Wage increases are essential but not sufficient \u2014 educators need benefits, career paths, and manageable working conditions."'),
+                        React.createElement('div', { className: 'quote' }, '"FCC providers are small business owners who work 10-12 hour days caring for our youngest children. Their compensation and support needs are different from center employees \u2014 and often overlooked."')
+                    )
+                )
+            );
+        };
+
+        // ===== SCENARIO E: Cross-Agency Coordination & Data =====
+        const ScenarioData = () => {
+            return React.createElement('div', null,
+                React.createElement('div', { className: 'content-section full-width', style: { marginBottom: 16 } },
+                    React.createElement('div', { className: 'section-header' }, 'The Missing Link: $337M Without Outcome Data'),
+                    React.createElement('div', { className: 'comparison-table' },
+                        React.createElement('table', null,
+                            React.createElement('thead', null,
+                                React.createElement('tr', null,
+                                    React.createElement('th', null, 'What We Measure'),
+                                    React.createElement('th', null, 'What We Don\u2019t Measure')
+                                )
+                            ),
+                            React.createElement('tbody', null,
+                                React.createElement('tr', null,
+                                    React.createElement('td', null, '\u2713 Kindergarten readiness at age 5', React.createElement('br'), '\u2713 Academic outcomes', React.createElement('br'), '\u2713 Demographics'),
+                                    React.createElement('td', { style: { color: '#c62828' } }, '\u2717 Which children attended ECE 0-5', React.createElement('br'), '\u2717 Type of care (FCC, center, Head Start)', React.createElement('br'), '\u2717 Hours per week', React.createElement('br'), '\u2717 Age when care began')
+                                )
+                            )
+                        )
+                    ),
+                    React.createElement('div', { style: { textAlign: 'center', margin: '24px 0', fontSize: 15 } },
+                        React.createElement('strong', { style: { color: '#667eea' } }, 'The Broken Chain: '),
+                        '$337M Investment \u2192 ',
+                        React.createElement('strong', { style: { color: '#c62828' } }, '???'),
+                        ' \u2192 Readiness'
+                    ),
+                    React.createElement('div', { className: 'flow-diagram' },
+                        React.createElement('div', { className: 'flow-step negative' },
+                            React.createElement('strong', null, 'TK/Kindergarten readiness: data captured but not reported'),
+                            React.createElement('span', null, 'DEC says ECE experience data is being collected. But the reports showing whether investment is improving children\u2019s outcomes are not publicly available. Without visible results, we\u2019re asking the community to trust without evidence.')
+                        ),
+                        React.createElement('div', { className: 'flow-step warning' },
+                            React.createElement('strong', null, 'School readiness may not be the right sole outcome'),
+                            React.createElement('span', null, 'Readiness scores at age 5 are one metric. But ECE investment may be improving family stability, parent workforce participation, and child well-being in ways that readiness tests don\u2019t capture.')
+                        ),
+                        React.createElement('div', { className: 'flow-step question' },
+                            React.createElement('strong', null, 'Is the investment making a difference?'),
+                            React.createElement('span', null, 'We can\u2019t answer this without connecting ECE enrollment data to outcomes. Not just "did they attend?" but "what type, how much, and what happened next?"')
+                        ),
+                        React.createElement('div', { className: 'flow-step positive' },
+                            React.createElement('strong', null, 'The fix: cross-agency data sharing'),
+                            React.createElement('span', null, 'DEC + SFUSD + providers need shared visibility. SFUSD\u2019s Parent Information Form (PIF) can capture ECE history at kindergarten entry \u2014 4 questions, $0 cost. Santa Clara already does this.')
+                        )
+                    )
+                ),
+                React.createElement('div', { className: 'content-grid' },
+                    React.createElement('div', { className: 'content-section' },
+                        React.createElement('div', { className: 'section-header' }, 'What Santa Clara Does'),
+                        React.createElement('p', { style: { color: '#555', marginBottom: 12, fontSize: 13 } }, 'Their Parent Information Form asks:'),
+                        React.createElement('ul', { style: { margin: '0 0 16px 20px', color: '#555', lineHeight: 1.8, fontSize: 13 } },
+                            React.createElement('li', null, '\u2611 Did child attend preschool/FCC/Head Start?'),
+                            React.createElement('li', null, '\u2611 How many hours per week?'),
+                            React.createElement('li', null, '\u2611 At what age did ECE begin?'),
+                            React.createElement('li', null, '\u2611 Type of program attended')
+                        ),
+                        React.createElement('div', { className: 'callout success' },
+                            React.createElement('h4', null, 'The Fix'),
+                            React.createElement('p', null, React.createElement('strong', null, 'SFUSD adds 4 questions to PIF')),
+                            React.createElement('p', null, React.createElement('strong', null, 'Cost:'), ' $0 \u2022 ', React.createElement('strong', null, 'Timeline:'), ' Fall 2026')
+                        )
+                    ),
+                    React.createElement('div', { className: 'content-section' },
+                        React.createElement('div', { className: 'section-header' }, 'Without This Data'),
+                        React.createElement('div', { className: 'impact-category concerns' },
+                            React.createElement('h4', null, '\u2717 WHAT WE CAN\u2019T DO:'),
+                            React.createElement('ul', null,
+                                React.createElement('li', null, 'Prove ROI on $337M annual investment'),
+                                React.createElement('li', null, 'Compare FCC vs center outcomes'),
+                                React.createElement('li', null, 'Show whether 0-3 investment pays off'),
+                                React.createElement('li', null, 'Justify expansion to skeptical policymakers'),
+                                React.createElement('li', null, 'Identify which program types are most effective')
+                            )
+                        ),
+                        React.createElement('div', { className: 'callout warning' },
+                            React.createElement('h4', null, 'CPAC Priority #2: Cross-Agency Coordination'),
+                            React.createElement('p', null, 'Data sharing between DEC, SFUSD, and providers is essential. We invest $337M annually but can\u2019t connect that investment to outcomes. This isn\u2019t a technology problem \u2014 it\u2019s a coordination problem.')
+                        )
+                    )
+                ),
+                React.createElement('div', { className: 'content-section full-width', style: { marginTop: 16 } },
+                    React.createElement('div', { className: 'section-header' }, 'Key Messages'),
+                    React.createElement('div', { className: 'quote-box' },
+                        React.createElement('div', { className: 'quote' }, '"Before debating TK vs infant care, fix the data problem: SF doesn\u2019t track which children attended ECE before kindergarten. Santa Clara asks 4 questions. We should too. Costs $0."'),
+                        React.createElement('div', { className: 'quote' }, '"DEC tells us they\u2019re capturing ECE experience data. We take that on good faith. But the community needs to see the reports \u2014 not just hear that they exist. Transparency builds trust."'),
+                        React.createElement('div', { className: 'quote' }, '"School readiness is one outcome. But families are also more stable when they have child care. Parents can work. Siblings benefit. The full picture of ECE\u2019s impact is broader than a readiness score."')
+                    ),
+                    React.createElement('div', { className: 'stats-box' },
+                        React.createElement('div', { className: 'stat-item' },
+                            React.createElement('div', { className: 'stat-value' }, '$337M'),
+                            React.createElement('div', { className: 'stat-label' }, 'Annual investment')
+                        ),
+                        React.createElement('div', { className: 'stat-item' },
+                            React.createElement('div', { className: 'stat-value negative' }, '????'),
+                            React.createElement('div', { className: 'stat-label' }, 'ROI unknown')
+                        ),
+                        React.createElement('div', { className: 'stat-item' },
+                            React.createElement('div', { className: 'stat-value positive' }, '$0'),
+                            React.createElement('div', { className: 'stat-label' }, 'Cost to fix')
+                        ),
+                        React.createElement('div', { className: 'stat-item' },
+                            React.createElement('div', { className: 'stat-value' }, '4'),
+                            React.createElement('div', { className: 'stat-label' }, 'Questions to add')
+                        )
+                    )
+                )
+            );
+        };
+
+        ReactDOM.render(React.createElement(App), document.getElementById('root'));
+    </script>
+</body>
+</html>
