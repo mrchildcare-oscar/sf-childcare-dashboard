@@ -349,6 +349,35 @@
         .sub-selector { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
         .landscape-table tr.row-highlighted { background: #f0f0ff; }
 
+        /* Demand Pressure Lens — neutral teal-intensity gradient (no good/bad coding).
+           Tighter supply = darker teal; slacker = paler. Same hue, varying saturation. */
+        .saturation-toggle-row { display: flex; align-items: center; gap: 18px; margin-bottom: 16px; padding: 10px 14px; background: #f8f9fb; border: 1px solid #e6e8eb; border-radius: 10px; flex-wrap: wrap; }
+        .saturation-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; font-size: 13px; font-weight: 600; color: #444; }
+        .saturation-toggle input { cursor: pointer; }
+        .saturation-mode-row { display: flex; align-items: center; gap: 10px; font-size: 12px; color: #666; }
+        .saturation-mode-btn { padding: 4px 12px; border: 1px solid #ddd; background: white; border-radius: 14px; font-size: 12px; cursor: pointer; color: #666; }
+        .saturation-mode-btn.active { background: #2c7a7b; color: white; border-color: #2c7a7b; }
+        .saturation-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; margin-bottom: 14px; }
+        /* Pill styling per band */
+        .sat-tight    { background: #b8e0e1; color: #134e4f; border: 1px solid #4f9696; }
+        .sat-balanced { background: #d8ecec; color: #2c5757; border: 1px solid #8ab8b8; }
+        .sat-slack    { background: #eef6f6; color: #4a7777; border: 1px solid #c9dede; }
+        .sat-unknown  { background: #ececec; color: #666;    border: 1px solid #ccc;    }
+        .sat-pill-ratio { font-weight: 500; opacity: 0.85; margin-left: 4px; }
+        .sat-pill-help { font-size: 11px; font-weight: 500; color: #666; margin-top: 6px; line-height: 1.5; max-width: 720px; }
+        /* Row tints — same teal scale, lighter for table backgrounds */
+        .sat-row-tight    { background: #c2e3e4 !important; }
+        .sat-row-balanced { background: #e1f0f0 !important; }
+        .sat-row-slack    { background: #f3f9f9 !important; }
+        .sat-row-tight:hover, .sat-row-balanced:hover, .sat-row-slack:hover { filter: brightness(0.97); }
+        .landscape-table tr.sat-row-tight td,
+        .landscape-table tr.sat-row-balanced td,
+        .landscape-table tr.sat-row-slack td { background: transparent; }
+        /* Card border emphasis when saturation toggled on */
+        .landscape-card.sat-row-tight    { border-color: #4f9696 !important; border-width: 2px !important; }
+        .landscape-card.sat-row-balanced { border-color: #8ab8b8 !important; border-width: 2px !important; }
+        .landscape-card.sat-row-slack    { border-color: #c9dede !important; border-width: 2px !important; }
+
         /* Responsive */
         @media (max-width: 1024px) { .grid { grid-template-columns: 1fr; } .sidebar { position: static; } .supply-demand-grid { grid-template-columns: 1fr; } }
         @media (max-width: 768px) { .header-content { flex-direction: column; align-items: flex-start; } #map { height: 400px; } .landscape-cards { grid-template-columns: 1fr 1fr; } }
@@ -360,9 +389,13 @@
     <div id="root"></div>
 
     <script>
-        // Load data from external JSON
+        // Load data from external JSON. On localhost, use the local copies in this dir
+        // because the Vercel host enforces a referer check that blocks localhost origins.
+        const DATA_HOST = (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname.startsWith('192.168.'))
+            ? '.'
+            : 'https://ece-data-host.vercel.app';
         window.CHILDCARE_DATA = null;
-        fetch('https://ece-data-host.vercel.app/childcare_all_coordinates.json')
+        fetch(DATA_HOST + '/childcare_all_coordinates.json')
             .then(r => r.json())
             .then(d => {
                 window.CHILDCARE_DATA = d;
@@ -375,7 +408,7 @@
 
         // Load district boundaries GeoJSON
         window.DISTRICT_GEO = null;
-        fetch('https://ece-data-host.vercel.app/sf_districts.geojson')
+        fetch(DATA_HOST + '/sf_districts.geojson')
             .then(r => r.json())
             .then(d => {
                 window.DISTRICT_GEO = d;
@@ -408,6 +441,248 @@
             'South Central': [8, 9],
             'Southeast': [10, 11]
         };
+
+        // Primary supervisor district by SF ZIP (used as fallback when neighborhood is absent).
+        // Many SF ZIPs straddle districts (94134 = Vis Valley/Portola/Crocker Amazon spans
+        // D10/D9/D11). For accurate routing, use NEIGHBORHOOD_TO_DISTRICT first.
+        const ZIP_TO_DISTRICT = {
+            '94102': 6, '94103': 6, '94104': 3, '94105': 6, '94107': 10, '94108': 3,
+            '94109': 3, '94110': 9, '94111': 3, '94112': 11, '94114': 8, '94115': 5,
+            '94116': 4, '94117': 5, '94118': 1, '94121': 1, '94122': 4, '94123': 2,
+            '94124': 10, '94127': 7, '94129': 2, '94130': 6, '94131': 8, '94132': 7,
+            '94133': 3, '94134': 10, '94158': 6
+        };
+
+        // Neighborhood -> supervisor district (authoritative when available). Used to route
+        // providers in split ZIPs to the correct district. Mission/Bernal/Portola = D9
+        // (Ronen's old district), Bayview/Vis Valley = D10, Excelsior/OMI/Crocker Amazon = D11.
+        const NEIGHBORHOOD_TO_DISTRICT = {
+            'Mission': 9, 'Bernal Heights': 9, 'Portola': 9,
+            'Bayview': 10, 'Visitacion Valley': 10, 'Hunters Point': 10,
+            'Excelsior': 11, 'Ingleside': 11, 'Crocker Amazon': 11, 'Outer Mission': 11,
+            'Outer Richmond': 1, 'Inner Richmond': 1,
+            'Marina': 2, 'Pacific Heights': 2,
+            'Chinatown': 3, 'North Beach': 3, 'Nob Hill': 3, 'Financial District': 3, 'Russian Hill': 3,
+            'Outer Sunset': 4, 'Sunset': 4,
+            'Western Addition': 5, 'Hayes Valley': 5,
+            'Tenderloin': 6, 'SoMa': 6, 'Mission Bay': 6,
+            'Inner Sunset': 7, 'West Portal': 7, 'Lake Merced': 7,
+            'Castro': 8, 'Noe Valley': 8, 'Glen Park': 8
+        };
+
+        // ZIP -> {district: weight} for population apportionment. Weights sum to ~1.0.
+        // Approximate tract-share splits — used to allocate ACS counts to districts when a
+        // ZIP spans multiple. Single-district ZIPs are omitted (use ZIP_TO_DISTRICT).
+        const ZIP_DISTRICT_WEIGHTS = {
+            '94134': {10: 0.50, 9: 0.40, 11: 0.10},
+            '94110': {9: 0.85, 8: 0.15},
+            '94124': {10: 0.95, 9: 0.05},
+            '94112': {11: 0.85, 7: 0.10, 8: 0.05},
+            '94116': {4: 0.70, 7: 0.30},
+            '94117': {5: 0.50, 8: 0.50},
+            '94122': {4: 0.85, 5: 0.15},
+            '94131': {8: 0.70, 7: 0.30},
+            '94107': {6: 0.70, 10: 0.30},
+            '94115': {5: 0.70, 2: 0.30}
+        };
+
+        // ACS 2019-2023 5-year, table C16001 — Population 5+ years by language spoken at
+        // home, by ZCTA. Used by the Pressure Lens to compare the population's language mix
+        // against the self-registered providers' language mix (the gap = survivorship signal).
+        // Counts are absolute (not %); aggregate to district via ZIP_TO_DISTRICT, then divide.
+        const ACS_LANG_BY_ZIP = {
+            '94102': {pop:34154, eng:17916, spa:5384,  chi:3283,  tag:887,  vie:1677},
+            '94103': {pop:32497, eng:18036, spa:5187,  chi:2940,  tag:2091, vie:535},
+            '94104': {pop:478,   eng:190,   spa:16,    chi:136,   tag:0,    vie:0},
+            '94105': {pop:14362, eng:7510,  spa:850,   chi:3217,  tag:418,  vie:43},
+            '94107': {pop:28875, eng:17132, spa:2533,  chi:3531,  tag:579,  vie:140},
+            '94108': {pop:10787, eng:4439,  spa:431,   chi:4503,  tag:128,  vie:113},
+            '94109': {pop:53115, eng:34125, spa:3705,  chi:5175,  tag:631,  vie:430},
+            '94110': {pop:63530, eng:36661, spa:17126, chi:3158,  tag:1232, vie:142},
+            '94111': {pop:4445,  eng:1769,  spa:103,   chi:1844,  tag:50,   vie:0},
+            '94112': {pop:76208, eng:27194, spa:16078, chi:21992, tag:6092, vie:874},
+            '94114': {pop:32398, eng:24820, spa:1880,  chi:1306,  tag:153,  vie:200},
+            '94115': {pop:31463, eng:22324, spa:1979,  chi:1517,  tag:817,  vie:259},
+            '94116': {pop:40459, eng:20814, spa:1755,  chi:12568, tag:1093, vie:807},
+            '94117': {pop:36007, eng:28854, spa:1735,  chi:1304,  tag:236,  vie:217},
+            '94118': {pop:37600, eng:24546, spa:2103,  chi:5602,  tag:601,  vie:212},
+            '94121': {pop:40847, eng:24180, spa:1670,  chi:8820,  tag:493,  vie:392},
+            '94122': {pop:54900, eng:29612, spa:3755,  chi:14274, tag:935,  vie:391},
+            '94123': {pop:22698, eng:18761, spa:1024,  chi:687,   tag:96,   vie:34},
+            '94124': {pop:34418, eng:16142, spa:6915,  chi:8244,  tag:692,  vie:617},
+            '94127': {pop:19815, eng:13674, spa:1239,  chi:2481,  tag:307,  vie:158},
+            '94129': {pop:3341,  eng:2570,  spa:434,   chi:24,    tag:8,    vie:0},
+            '94130': {pop:2745,  eng:1612,  spa:638,   chi:99,    tag:31,   vie:25},
+            '94131': {pop:26582, eng:19031, spa:2123,  chi:2080,  tag:177,  vie:90},
+            '94132': {pop:26777, eng:13154, spa:2125,  chi:6177,  tag:566,  vie:551},
+            '94133': {pop:23888, eng:12640, spa:1098,  chi:8123,  tag:101,  vie:170},
+            '94134': {pop:38683, eng:11260, spa:6213,  chi:15412, tag:2718, vie:1057},
+            '94158': {pop:9970,  eng:4906,  spa:867,   chi:1577,  tag:206,  vie:218}
+        };
+
+        // Provider language snapshot from familychildcaresf.com vacancy registry (Supabase),
+        // active+approved providers as of 2026-05-02. N=78. Self-reported, Chinese-skewed —
+        // treat as directional, not population truth. Spanish-speaking FCCs are
+        // underrepresented vs their share of the SF FCC population.
+        window.PROVIDER_SNAPSHOT = {
+            snapshot_date: '2026-05-02',
+            n: 77,
+            providers: [
+                {zip:'94121',neighborhood:'Outer Richmond',languages:['English','Cantonese','Mandarin'],program_type:'large_family',licensed_capacity:14,is_elfa_network:true},
+                {zip:'94116',neighborhood:'Outer Sunset',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94122',neighborhood:'Inner Sunset',languages:['English','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:false},
+                {zip:'94134',neighborhood:'Visitacion Valley',languages:['English','Cantonese','Mandarin'],program_type:'large_family',licensed_capacity:14,is_elfa_network:true},
+                {zip:'94102',neighborhood:'Tenderloin',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94121',neighborhood:'Inner Richmond',languages:['Cantonese'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94109',neighborhood:'Nob Hill',languages:['English','Cantonese'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94124',neighborhood:'Portola',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94122',neighborhood:'Outer Sunset',languages:['English','Cantonese','Mandarin'],program_type:'large_family',licensed_capacity:14,is_elfa_network:false},
+                {zip:'94112',neighborhood:'Excelsior',languages:['English','Cantonese','Mandarin','Japanese'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94124',neighborhood:'Bayview',languages:['English'],program_type:'large_family',licensed_capacity:14,is_elfa_network:true},
+                {zip:'94122',neighborhood:'Sunset',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94107',neighborhood:'SoMa',languages:['English','Cantonese'],program_type:'small_family',licensed_capacity:8,is_elfa_network:false},
+                {zip:'94134',neighborhood:'Portola',languages:['English','Cantonese','Mandarin'],program_type:'large_family',licensed_capacity:14,is_elfa_network:true},
+                {zip:'94112',neighborhood:'Excelsior',languages:['English','Cantonese','Mandarin'],program_type:'large_family',licensed_capacity:14,is_elfa_network:true},
+                {zip:'94124',neighborhood:'Bayview',languages:['Cantonese','Mandarin','English'],program_type:'large_family',licensed_capacity:14,is_elfa_network:true},
+                {zip:'94112',neighborhood:'Excelsior',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94112',neighborhood:'Mission',languages:['English','Cantonese'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94124',neighborhood:'Bayview',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:false},
+                {zip:'94134',neighborhood:'Visitacion Valley',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:false},
+                {zip:'94112',neighborhood:'Mission Bay',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:6,is_elfa_network:true},
+                {zip:'94112',neighborhood:'Excelsior',languages:['English','Spanish'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94132',neighborhood:'Lake Merced',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94134',neighborhood:'Portola',languages:['Cantonese'],program_type:'small_family',licensed_capacity:6,is_elfa_network:false},
+                {zip:'94124',neighborhood:'Bayview',languages:['English','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94134',neighborhood:'Visitacion Valley',languages:['Cantonese','Mandarin'],program_type:'large_family',licensed_capacity:14,is_elfa_network:true},
+                {zip:'94102',neighborhood:'Hayes Valley',languages:['English'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94133',neighborhood:'Chinatown',languages:['Cantonese'],program_type:'large_family',licensed_capacity:14,is_elfa_network:true},
+                {zip:'94121',neighborhood:'Outer Richmond',languages:['English','Cantonese','Mandarin'],program_type:'large_family',licensed_capacity:14,is_elfa_network:true},
+                {zip:'94112',neighborhood:'Excelsior',languages:['English','Cantonese','Mandarin'],program_type:'large_family',licensed_capacity:14,is_elfa_network:true},
+                {zip:'94134',neighborhood:'Portola',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94112',neighborhood:'Excelsior',languages:['English','Cantonese','Mandarin'],program_type:'large_family',licensed_capacity:14,is_elfa_network:false},
+                {zip:'94158',neighborhood:'Mission Bay',languages:['English'],program_type:'large_family',licensed_capacity:14,is_elfa_network:true},
+                {zip:'94080',neighborhood:'South San Francisco',languages:['English'],program_type:'small_family',licensed_capacity:8,is_elfa_network:false},
+                {zip:'94124',neighborhood:'Bayview',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:false},
+                {zip:'94121',neighborhood:'Outer Richmond',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94122',neighborhood:'Outer Sunset',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:false},
+                {zip:'94134',neighborhood:'Portola',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:false},
+                {zip:'94134',neighborhood:'Visitacion Valley',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94134',neighborhood:'Portola',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94134',neighborhood:'Portola',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94112',neighborhood:'Excelsior',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94134',neighborhood:'Visitacion Valley',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:false},
+                {zip:'94122',neighborhood:'Outer Sunset',languages:['English','Cantonese','Mandarin'],program_type:'large_family',licensed_capacity:14,is_elfa_network:true},
+                {zip:'94112',neighborhood:'Excelsior',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94112',neighborhood:'Excelsior',languages:['English','Cantonese','Mandarin'],program_type:'large_family',licensed_capacity:14,is_elfa_network:true},
+                {zip:'94134',neighborhood:'Portola',languages:['English','Cantonese','Mandarin'],program_type:'large_family',licensed_capacity:14,is_elfa_network:true},
+                {zip:'94134',neighborhood:'Portola',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94110',neighborhood:'Mission',languages:['English','Spanish'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94135',neighborhood:'Portola',languages:['English','Cantonese','Mandarin'],program_type:'large_family',licensed_capacity:14,is_elfa_network:true},
+                {zip:'94118',neighborhood:'Inner Richmond',languages:['English'],program_type:'large_family',licensed_capacity:14,is_elfa_network:true},
+                {zip:'94103',neighborhood:'SoMa',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94112',neighborhood:'Excelsior',languages:['English','Cantonese','Mandarin'],program_type:'large_family',licensed_capacity:14,is_elfa_network:true},
+                {zip:'94112',neighborhood:'Mission',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94102',neighborhood:'Hayes Valley',languages:['English','Cantonese','Mandarin'],program_type:'large_family',licensed_capacity:14,is_elfa_network:true},
+                {zip:'94121',neighborhood:'Outer Richmond',languages:['English','Cantonese'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94103',neighborhood:'Financial District',languages:['English','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94132',neighborhood:'Lake Merced',languages:['English','Cantonese','Mandarin'],program_type:'large_family',licensed_capacity:14,is_elfa_network:true},
+                {zip:'94121',neighborhood:'Outer Richmond',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:false},
+                {zip:'94122',neighborhood:'Outer Sunset',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94112',neighborhood:'Crocker Amazon',languages:['English','Cantonese','Mandarin'],program_type:'large_family',licensed_capacity:14,is_elfa_network:true},
+                {zip:'94116',neighborhood:'Outer Sunset',languages:['English','Cantonese','Mandarin'],program_type:'large_family',licensed_capacity:12,is_elfa_network:true},
+                {zip:'94112',neighborhood:'Bayview',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94115',neighborhood:'Western Addition',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:false},
+                {zip:'94112',neighborhood:'Excelsior',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94124',neighborhood:'Bayview',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:false},
+                {zip:'94112',neighborhood:'Excelsior',languages:['English'],program_type:'large_family',licensed_capacity:14,is_elfa_network:false},
+                {zip:'94116',neighborhood:'Inner Sunset',languages:['English'],program_type:'large_family',licensed_capacity:14,is_elfa_network:true},
+                {zip:'94112',neighborhood:'Ingleside',languages:['English','Spanish'],program_type:'large_family',licensed_capacity:14,is_elfa_network:true},
+                {zip:'94124',neighborhood:'Bayview',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94112',neighborhood:'Excelsior',languages:['English','Spanish','Cantonese'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94107',neighborhood:'Mission Bay',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94112',neighborhood:'Excelsior',languages:['English','Cantonese'],program_type:'large_family',licensed_capacity:14,is_elfa_network:true},
+                {zip:'94116',neighborhood:'Outer Sunset',languages:['English','Mandarin','Cantonese'],program_type:'large_family',licensed_capacity:14,is_elfa_network:true},
+                {zip:'94134',neighborhood:'Portola',languages:['Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:true},
+                {zip:'94132',neighborhood:'Lake Merced',languages:['English','Cantonese','Mandarin'],program_type:'large_family',licensed_capacity:14,is_elfa_network:false},
+                {zip:'94132',neighborhood:'Lake Merced',languages:['English','Cantonese','Mandarin'],program_type:'small_family',licensed_capacity:8,is_elfa_network:false}
+            ]
+        };
+
+        // Active vacancy snapshot from familychildcaresf.com vacancy registry — only
+        // un-expired vacancies as of snapshot date. Each row joins a vacancy to its
+        // provider's location and language capability. Used by the Language-Segmented
+        // Market view to compare openings per language segment to the children needing
+        // care in households speaking that language.
+        // Field shorthand: z=zip, nh=neighborhood, l=languages, i=infant_spots,
+        // t=toddler_spots, p=preschool_spots, s=school_age_spots, wl=waitlist_available.
+        window.VACANCY_SNAPSHOT = {
+            snapshot_date: '2026-05-02',
+            n: 50,
+            vacancies: [
+                {z:'94121',nh:'Outer Richmond',l:['English','Cantonese','Mandarin'],i:1,t:2,p:0,s:0,wl:false},
+                {z:'94116',nh:'Outer Sunset',l:['English','Cantonese','Mandarin'],i:0,t:1,p:0,s:0,wl:false},
+                {z:'94122',nh:'Inner Sunset',l:['English','Mandarin'],i:3,t:0,p:0,s:0,wl:false},
+                {z:'94134',nh:'Visitacion Valley',l:['English','Cantonese','Mandarin'],i:1,t:3,p:0,s:0,wl:true},
+                {z:'94102',nh:'Tenderloin',l:['English','Cantonese','Mandarin'],i:2,t:2,p:0,s:0,wl:true},
+                {z:'94121',nh:'Inner Richmond',l:['Cantonese'],i:3,t:2,p:2,s:0,wl:true},
+                {z:'94109',nh:'Nob Hill',l:['English','Cantonese'],i:0,t:0,p:0,s:1,wl:true},
+                {z:'94124',nh:'Portola',l:['English','Cantonese','Mandarin'],i:1,t:1,p:0,s:0,wl:true},
+                {z:'94122',nh:'Outer Sunset',l:['English','Cantonese','Mandarin'],i:0,t:0,p:4,s:2,wl:true},
+                {z:'94112',nh:'Excelsior',l:['English','Cantonese','Mandarin','Japanese'],i:2,t:2,p:0,s:0,wl:true},
+                {z:'94124',nh:'Bayview',l:['English'],i:0,t:3,p:0,s:0,wl:false},
+                {z:'94132',nh:'Portola',l:['English','Cantonese','Mandarin'],i:2,t:2,p:2,s:1,wl:true},
+                {z:'94107',nh:'SoMa',l:['English','Cantonese'],i:0,t:0,p:0,s:0,wl:true},
+                {z:'94134',nh:'Portola',l:['English','Cantonese','Mandarin'],i:0,t:0,p:0,s:0,wl:true},
+                {z:'94112',nh:'Excelsior',l:['English','Cantonese','Mandarin'],i:0,t:0,p:0,s:0,wl:true},
+                {z:'94124',nh:'Bayview',l:['Cantonese','Mandarin','English'],i:1,t:0,p:0,s:0,wl:true},
+                {z:'94112',nh:'Excelsior',l:['English','Cantonese','Mandarin'],i:1,t:1,p:1,s:0,wl:true},
+                {z:'94112',nh:'Mission',l:['English','Cantonese'],i:2,t:1,p:0,s:0,wl:false},
+                {z:'94124',nh:'Bayview',l:['English','Cantonese','Mandarin'],i:1,t:0,p:0,s:0,wl:false},
+                {z:'94134',nh:'Visitacion Valley',l:['English','Cantonese','Mandarin'],i:2,t:2,p:0,s:0,wl:true},
+                {z:'94112',nh:'Mission Bay',l:['English','Cantonese','Mandarin'],i:1,t:0,p:0,s:0,wl:true},
+                {z:'94112',nh:'Excelsior',l:['English','Spanish'],i:0,t:1,p:1,s:1,wl:false},
+                {z:'94134',nh:'Portola',l:['Cantonese'],i:2,t:1,p:0,s:0,wl:true},
+                {z:'94124',nh:'Bayview',l:['English','Mandarin'],i:2,t:4,p:0,s:0,wl:false},
+                {z:'94134',nh:'Visitacion Valley',l:['Cantonese','Mandarin'],i:2,t:5,p:2,s:2,wl:true},
+                {z:'94112',nh:'Excelsior',l:['English','Cantonese','Mandarin'],i:2,t:2,p:2,s:0,wl:false},
+                {z:'94134',nh:'Portola',l:['English','Cantonese','Mandarin'],i:2,t:1,p:0,s:0,wl:false},
+                {z:'94112',nh:'Excelsior',l:['English','Cantonese','Mandarin'],i:2,t:0,p:0,s:0,wl:true},
+                {z:'94080',nh:'South San Francisco',l:['English'],i:0,t:1,p:0,s:0,wl:false},
+                {z:'94134',nh:'Visitacion Valley',l:['English','Cantonese','Mandarin'],i:2,t:2,p:0,s:0,wl:false},
+                {z:'94112',nh:'Excelsior',l:['English','Cantonese','Mandarin'],i:2,t:2,p:0,s:0,wl:false},
+                {z:'94112',nh:'Excelsior',l:['English','Cantonese','Mandarin'],i:3,t:4,p:0,s:0,wl:false},
+                {z:'94134',nh:'Portola',l:['English','Cantonese','Mandarin'],i:3,t:5,p:3,s:1,wl:false},
+                {z:'94135',nh:'Portola',l:['English','Cantonese','Mandarin'],i:1,t:3,p:0,s:2,wl:true},
+                {z:'94112',nh:'Excelsior',l:['English','Cantonese','Mandarin'],i:2,t:2,p:2,s:2,wl:false},
+                {z:'94112',nh:'Mission',l:['English','Cantonese','Mandarin'],i:1,t:1,p:0,s:2,wl:true},
+                {z:'94102',nh:'Hayes Valley',l:['English','Cantonese','Mandarin'],i:0,t:2,p:2,s:0,wl:true},
+                {z:'94112',nh:'Crocker Amazon',l:['English','Cantonese','Mandarin'],i:0,t:0,p:0,s:0,wl:true},
+                {z:'94116',nh:'Outer Sunset',l:['English','Cantonese','Mandarin'],i:1,t:2,p:2,s:0,wl:false},
+                {z:'94112',nh:'Bayview',l:['English','Cantonese','Mandarin'],i:1,t:0,p:0,s:0,wl:true},
+                {z:'94115',nh:'Western Addition',l:['English','Cantonese','Mandarin'],i:2,t:2,p:2,s:2,wl:true},
+                {z:'94112',nh:'Excelsior',l:['English','Cantonese','Mandarin'],i:1,t:1,p:0,s:0,wl:false},
+                {z:'94124',nh:'Bayview',l:['English','Cantonese','Mandarin'],i:2,t:3,p:1,s:3,wl:true},
+                {z:'94112',nh:'Ingleside',l:['English','Spanish'],i:0,t:0,p:0,s:0,wl:true},
+                {z:'94112',nh:'Excelsior',l:['English','Spanish','Cantonese'],i:2,t:2,p:2,s:2,wl:true},
+                {z:'94107',nh:'Mission Bay',l:['English','Cantonese','Mandarin'],i:0,t:0,p:0,s:0,wl:true},
+                {z:'94112',nh:'Excelsior',l:['English','Cantonese'],i:2,t:1,p:0,s:0,wl:true},
+                {z:'94134',nh:'Portola',l:['Cantonese','Mandarin'],i:1,t:1,p:0,s:0,wl:true},
+                {z:'94132',nh:'Lake Merced',l:['English','Cantonese','Mandarin'],i:1,t:3,p:0,s:0,wl:true},
+                {z:'94132',nh:'Lake Merced',l:['English','Cantonese','Mandarin'],i:0,t:2,p:0,s:0,wl:true}
+            ]
+        };
+
+        // Resolve a provider to its supervisor district. Neighborhood wins if mapped
+        // (handles Portola in 94134 → D9, etc); ZIP fallback for the rest.
+        function providerDistrict(p) {
+            return NEIGHBORHOOD_TO_DISTRICT[p.neighborhood] || ZIP_TO_DISTRICT[p.zip] || null;
+        }
+
+        // Apportion ACS counts for a ZIP into per-district contributions using
+        // ZIP_DISTRICT_WEIGHTS (or full assignment via ZIP_TO_DISTRICT).
+        function zipDistrictWeights(zip) {
+            return ZIP_DISTRICT_WEIGHTS[zip] || (ZIP_TO_DISTRICT[zip] ? {[ZIP_TO_DISTRICT[zip]]: 1.0} : {});
+        }
 
         const ZIP_DEMAND_DATA = [
             { zip: '94102', total_hh: 1351, le110: 973, b110_150: 119, b150_200: 74, gt200: 186, under3: 605, age3_4: 44, age5: 85 },
@@ -619,6 +894,53 @@
             const [selectedDistrict, setSelectedDistrict] = useState(1);
             const [selectedZip, setSelectedZip] = useState('94102');
 
+            // ===== Demand Pressure Lens state =====
+            // Neutral framing — reads supply/demand pressure without "good/bad" valence.
+            // Bands: <0.40 tight (high demand pressure), 0.40-0.70 balanced (~SF avg 0.55),
+            // >0.70 slack (supply outpaces demand). Anchor: federal "child care desert" = <0.33.
+            const [saturationOn, setSaturationOn] = useState(false);
+            const [saturationMode, setSaturationMode] = useState('total'); // 'total' | 'elfa'
+
+            // Compute pressure ratio + label/color/emoji for a slots/children pair.
+            // Color uses a neutral teal-intensity gradient (no red/green moral coding).
+            const getSaturation = (slots, children) => {
+                if (!children || children <= 0) return { ratio: null, label: 'No data', color: 'unknown', emoji: '⚪' };
+                const ratio = slots / children;
+                if (ratio < 0.40) return { ratio, label: 'Tight supply',  color: 'tight',    emoji: '🔥' };
+                if (ratio < 0.70) return { ratio, label: 'Balanced',      color: 'balanced', emoji: '↔️' };
+                return                  { ratio, label: 'Slack supply',  color: 'slack',    emoji: '🧊' };
+            };
+
+            // Demand-pressure pill — renders nothing when toggle is off.
+            // Help text gives explicit audience-specific interpretation since the same
+            // data means different things to parents, providers, and policymakers.
+            const SaturationPill = ({slots, children, mode}) => {
+                if (!saturationOn) return null;
+                const sat = getSaturation(slots, children);
+                if (sat.ratio === null) return (
+                    <div className={'saturation-pill sat-unknown'}>{sat.emoji} {sat.label}</div>
+                );
+                const isElfa = mode === 'elfa';
+                return (
+                    <div>
+                        <div className={'saturation-pill sat-' + sat.color}>
+                            {sat.emoji} {sat.label}
+                            <span className="sat-pill-ratio">· {sat.ratio.toFixed(2)} {isElfa?'ELFA':''} slots/child</span>
+                        </div>
+                        <div className="sat-pill-help">
+                            <strong>{isElfa ? 'ELFA-contracted slots' : 'Licensed slots'} ÷ children under 6.</strong>{' '}
+                            {isElfa ? 'Tighter = harder for low-income families to find subsidized care.' : 'SF average ≈ 0.55. Federal "child care desert" floor = 0.33.'}
+                            <br/>
+                            <span style={{fontSize:'10px',color:'#888'}}>
+                                Reads differently per audience: 👨‍👩‍👧 parents — tighter = waitlists likely;{' '}
+                                🏢 providers — tighter = strong demand, lighter competition;{' '}
+                                🏛️ policy/advocacy — tighter = supply gap to address
+                            </span>
+                        </div>
+                    </div>
+                );
+            };
+
             // ===== Corridor analysis =====
             const [corridor, setCorridor] = useState('Westside');
 
@@ -724,7 +1046,8 @@
                         under6,
                         le110: z.le110,
                         le200: z.le110 + z.b110_150 + z.b150_200,
-                        slotsPerChild: under6 > 0 ? parseFloat((supply.totalCap / under6).toFixed(2)) : 0
+                        slotsPerChild: under6 > 0 ? parseFloat((supply.totalCap / under6).toFixed(2)) : 0,
+                        elfaSlotsPerChild: under6 > 0 ? parseFloat((supply.elfaCap / under6).toFixed(2)) : 0
                     };
                 });
                 const dir = zipSortAsc ? 1 : -1;
@@ -744,6 +1067,324 @@
                     count: Object.values(supplyByZip).reduce((s, v) => s + v.count, 0)
                 };
             }, [supplyByZip]);
+
+            // ===== Pressure Lens =====
+            // Surfaces who bears the cost of expansion: where FCCs are concentrated, how much
+            // ELFA-funded center capacity is pressing in alongside them, and what language
+            // mix the registered providers report. Calls out the survivorship-bias gap when
+            // a district has many CCLD providers but few self-registered voices.
+            const pressureByDistrict = useMemo(() => {
+                const snap = window.PROVIDER_SNAPSHOT?.providers || [];
+                const result = {};
+                for (let i = 1; i <= 11; i++) {
+                    const s = supplyByDistrict[i] || {};
+                    const fccCap = s.fccCap || 0;
+                    const fccCount = s.fccCount || 0;
+                    const totalCap = s.totalCap || 0;
+                    const elfaCap = s.elfaCap || 0;
+                    const nonFccElfaCap = Math.max(0, elfaCap - 0); // ELFA includes both FCC + center; treat all ELFA as expansion pressure on FCCs
+                    // Route providers to district via neighborhood-first (handles Portola
+                    // in 94134 going to D9 rather than D10).
+                    const inDist = snap.filter(p => providerDistrict(p) === i);
+                    const langCounts = { Spanish: 0, Cantonese: 0, Mandarin: 0, English: 0, Other: 0 };
+                    inDist.forEach(p => {
+                        const langs = p.languages || [];
+                        if (langs.includes('Spanish')) langCounts.Spanish++;
+                        if (langs.includes('Cantonese')) langCounts.Cantonese++;
+                        if (langs.includes('Mandarin')) langCounts.Mandarin++;
+                        if (langs.includes('English')) langCounts.English++;
+                        if (langs.some(l => !['Spanish','Cantonese','Mandarin','English'].includes(l))) langCounts.Other++;
+                    });
+                    const registeredN = inDist.length;
+                    // Population language baseline: apportion each ZIP's ACS counts to the
+                    // districts it overlaps via ZIP_DISTRICT_WEIGHTS (handles 94134 splitting
+                    // across D9 Portola / D10 Vis Valley / D11 Crocker Amazon).
+                    const pop = { tot: 0, eng: 0, spa: 0, chi: 0, tag: 0, vie: 0 };
+                    Object.entries(ACS_LANG_BY_ZIP).forEach(([zip, a]) => {
+                        const w = zipDistrictWeights(zip)[i] || 0;
+                        if (w === 0) return;
+                        pop.tot += a.pop * w; pop.eng += a.eng * w; pop.spa += a.spa * w;
+                        pop.chi += a.chi * w; pop.tag += a.tag * w; pop.vie += a.vie * w;
+                    });
+                    Object.keys(pop).forEach(k => pop[k] = Math.round(pop[k]));
+                    const popShare = pop.tot > 0 ? {
+                        eng: pop.eng / pop.tot, spa: pop.spa / pop.tot,
+                        chi: pop.chi / pop.tot, tag: pop.tag / pop.tot, vie: pop.vie / pop.tot
+                    } : { eng: 0, spa: 0, chi: 0, tag: 0, vie: 0 };
+                    const popCounts = { eng: pop.eng, spa: pop.spa, chi: pop.chi, tag: pop.tag, vie: pop.vie };
+                    // Registered: raw counts only. Don't normalize against the registry size
+                    // (the registry itself is biased — % of biased sample is misleading).
+                    const regCounts = {
+                        spa: langCounts.Spanish,
+                        chi: Math.max(langCounts.Cantonese, langCounts.Mandarin), // unique Chinese voices
+                        eng: langCounts.English
+                    };
+                    // Coverage rate: voices per 10,000 residents who speak that language.
+                    // Honest comparison across districts; doesn't conflate "% of registry".
+                    const coverage = {
+                        spa: pop.spa > 0 ? (regCounts.spa / pop.spa) * 10000 : 0,
+                        chi: pop.chi > 0 ? (regCounts.chi / pop.chi) * 10000 : 0,
+                        eng: pop.eng > 0 ? (regCounts.eng / pop.eng) * 10000 : 0
+                    };
+                    // Fcc concentration = % of district licensed capacity in FCC homes
+                    const fccConcentration = totalCap > 0 ? fccCap / totalCap : 0;
+                    // ELFA pressure = ELFA capacity per slot of FCC capacity. >1 = ELFA-funded
+                    // capacity outweighs all FCC capacity in the district.
+                    const elfaPressure = fccCap > 0 ? elfaCap / fccCap : 0;
+                    // Voice gap = ratio of registered providers to CCLD FCC count.
+                    // Low ratio = providers exist but aren't being heard from.
+                    const voiceCoverage = fccCount > 0 ? registeredN / fccCount : 0;
+                    // Squeeze score combines: high FCC presence + high ELFA pressure + low voice coverage
+                    const squeezeScore =
+                        (fccConcentration * 100) * 0.35 +
+                        (Math.min(elfaPressure, 5) * 20) * 0.45 +
+                        ((1 - Math.min(voiceCoverage, 1)) * 100) * 0.20;
+                    result[i] = {
+                        district: i,
+                        fccCount, fccCap, totalCap, elfaCap,
+                        fccConcentration, elfaPressure,
+                        registeredN, voiceCoverage, langCounts,
+                        popShare, popCounts, regCounts, coverage, popTotal: pop.tot,
+                        squeezeScore
+                    };
+                }
+                return result;
+            }, [supplyByDistrict]);
+
+            const pressureRows = useMemo(() => {
+                return Object.values(pressureByDistrict).sort((a, b) => b.squeezeScore - a.squeezeScore);
+            }, [pressureByDistrict]);
+
+            // ===== Language-Segmented Market =====
+            // Tests Oscar's hypothesis: if families pick programs by language match, the
+            // supply-demand picture is segmented per language. A Chinese-speaking provider
+            // competes for Chinese-speaking families (small saturated pool); a Spanish-
+            // speaking family competes for very few Spanish-capable spots. Here we count
+            // reported vacant slots (under-6: infant + toddler + preschool) per language
+            // segment, and compare to the kids-under-6 estimate per language segment
+            // (district under-6 demand × population language share).
+            const marketByDistrict = useMemo(() => {
+                const vacs = window.VACANCY_SNAPSHOT?.vacancies || [];
+                const result = {};
+                for (let i = 1; i <= 11; i++) {
+                    const dist = pressureByDistrict[i] || {};
+                    const u6 = (DEMAND_DATA.find(d => d.district === i) || {});
+                    const under6 = (u6.under3 || 0) + (u6.age3_4 || 0) + (u6.age5 || 0);
+                    // demand by language segment = under6 kids × population language share
+                    const demandSpa = Math.round(under6 * (dist.popShare?.spa || 0));
+                    const demandChi = Math.round(under6 * (dist.popShare?.chi || 0));
+                    const demandEng = Math.round(under6 * (dist.popShare?.eng || 0));
+                    // supply: filter vacancies to providers in this district by neighborhood,
+                    // then by language capability. Each vacancy contributes its under-6 spots
+                    // to every language it serves (it's the same opening, accessible to families
+                    // who match any of those languages).
+                    let supplySpa = 0, supplyChi = 0, supplyEng = 0, supplyTotal = 0, vacCount = 0;
+                    vacs.forEach(v => {
+                        const provDist = NEIGHBORHOOD_TO_DISTRICT[v.nh] || ZIP_TO_DISTRICT[v.z];
+                        if (provDist !== i) return;
+                        const u6Spots = (v.i || 0) + (v.t || 0) + (v.p || 0);
+                        supplyTotal += u6Spots;
+                        vacCount++;
+                        const langs = v.l || [];
+                        if (langs.includes('Spanish')) supplySpa += u6Spots;
+                        if (langs.includes('Cantonese') || langs.includes('Mandarin')) supplyChi += u6Spots;
+                        if (langs.includes('English')) supplyEng += u6Spots;
+                    });
+                    // Slots-per-100-kids = visible openings per 100 kids in segment
+                    const rate = (supply, demand) => demand > 0 ? (supply / demand) * 100 : null;
+                    result[i] = {
+                        district: i, under6, vacCount, supplyTotal,
+                        demandSpa, supplySpa, rateSpa: rate(supplySpa, demandSpa),
+                        demandChi, supplyChi, rateChi: rate(supplyChi, demandChi),
+                        demandEng, supplyEng, rateEng: rate(supplyEng, demandEng)
+                    };
+                }
+                return result;
+            }, [pressureByDistrict]);
+
+            const marketRows = useMemo(() => Object.values(marketByDistrict), [marketByDistrict]);
+
+            // ===== Forward Look: 750-slot ELFA Expansion (Summer 2026) =====
+            // Source: sf.gov mayor announcement + provider.sfdec.org/join-elfa criteria
+            // Application window: 2026-04-30 to 2026-06-30. Focus: infant + toddler (under 3).
+            // Priority neighborhoods: Sunset/Parkside/Richmond/Mission/Bayview/Portola/Mission
+            // Bay/Excelsior/Glen Park/SoMa → covers districts D1, D4, D6, D7, D8, D9, D10, D11.
+            // Ranking points: 5 (infant/toddler), 1 (CalWORKs), 1 (marginalized), 1 (IFSP/IEP).
+            // Tiebreaker: higher enrollment. NO language or geographic priority in the points.
+            const ELFA_EXPANSION = {
+                totalSlots: 750,
+                ageGroup: 'Infant + Toddler (under 3)',
+                rollout: 'Summer 2026',
+                applicationWindow: 'Apr 30 – Jun 30, 2026',
+                priorityDistricts: [1, 4, 6, 7, 8, 9, 10, 11],
+                rankingNote: 'Points reward service type (infant/toddler) and existing enrollment. No language priority.'
+            };
+
+            // Roll up the language-segmented market to the existing corridor groupings
+            // (Westside / North-Central / South-Central / Southeast). Same numbers as the
+            // district table summed across constituent districts.
+            const marketByCorridor = useMemo(() => {
+                return Object.entries(CORRIDORS).map(([name, dists]) => {
+                    const rows = dists.map(d => marketByDistrict[d] || {});
+                    const sum = (k) => rows.reduce((s, r) => s + (r[k] || 0), 0);
+                    const vacCount = sum('vacCount');
+                    const under6 = sum('under6');
+                    const demSpa = sum('demandSpa'), demChi = sum('demandChi'), demEng = sum('demandEng');
+                    const supSpa = sum('supplySpa'), supChi = sum('supplyChi'), supEng = sum('supplyEng');
+                    // Voice coverage at corridor level: sum registered providers vs sum CCLD FCC count
+                    const regN = dists.reduce((s, d) => s + ((pressureByDistrict[d] || {}).registeredN || 0), 0);
+                    const fccN = dists.reduce((s, d) => s + ((pressureByDistrict[d] || {}).fccCount || 0), 0);
+                    return {
+                        name, dists, vacCount, under6,
+                        demSpa, supSpa, rateSpa: demSpa > 0 ? (supSpa / demSpa) * 100 : null,
+                        demChi, supChi, rateChi: demChi > 0 ? (supChi / demChi) * 100 : null,
+                        demEng, supEng, rateEng: demEng > 0 ? (supEng / demEng) * 100 : null,
+                        regN, fccN, voiceCoverage: fccN > 0 ? regN / fccN : 0
+                    };
+                });
+            }, [marketByDistrict, pressureByDistrict]);
+
+            const expansionImpact = useMemo(() => {
+                const TOTAL = ELFA_EXPANSION.totalSlots;
+                const priority = ELFA_EXPANSION.priorityDistricts;
+                const dists = priority.map(i => ({ d: i, m: marketByDistrict[i] || {}, p: pressureByDistrict[i] || {} }));
+
+                // Citywide registry language share (fallback for districts with too few voices)
+                const snap = window.PROVIDER_SNAPSHOT?.providers || [];
+                const cwLang = { Spanish: 0, Cantonese: 0, Mandarin: 0, English: 0 };
+                snap.forEach(p => (p.languages || []).forEach(l => { if (cwLang[l] !== undefined) cwLang[l]++; }));
+                const cwShare = {
+                    spa: snap.length > 0 ? cwLang.Spanish / snap.length : 0,
+                    chi: snap.length > 0 ? Math.max(cwLang.Cantonese, cwLang.Mandarin) / snap.length : 0,
+                    eng: snap.length > 0 ? cwLang.English / snap.length : 0
+                };
+
+                // ----- SCENARIO A: status-quo allocation -----
+                // Distribute 750 slots proportional to existing ELFA capacity in priority
+                // districts (the ranking system rewards high enrollment + experience, both
+                // of which favor existing well-resourced ELFA providers). New slots inherit
+                // the language profile of the registered providers in that district. Where
+                // registered N is too small (< 3) we fall back to the citywide registry mix.
+                const totalElfaCap = dists.reduce((s, x) => s + (x.p.elfaCap || 0), 0) || 1;
+                const allocA = dists.map(x => {
+                    const slots = Math.round(TOTAL * (x.p.elfaCap || 0) / totalElfaCap);
+                    const regN = x.p.registeredN || 0;
+                    const useCw = regN < 3;
+                    const distShare = useCw ? cwShare : {
+                        spa: regN > 0 ? (x.p.regCounts?.spa || 0) / regN : cwShare.spa,
+                        chi: regN > 0 ? (x.p.regCounts?.chi || 0) / regN : cwShare.chi,
+                        eng: regN > 0 ? (x.p.regCounts?.eng || 0) / regN : cwShare.eng
+                    };
+                    return { d: x.d, slots, spaSlots: slots * distShare.spa, chiSlots: slots * distShare.chi, engSlots: slots * distShare.eng };
+                });
+
+                // ----- SCENARIO B: demand-proportional allocation -----
+                // Distribute 750 slots proportional to district under-3 demand. New slots
+                // inherit the population language share at home (an "unbiased" baseline).
+                const under3 = (i) => (DEMAND_DATA.find(d => d.district === i) || {}).under3 || 0;
+                const totalU3 = dists.reduce((s, x) => s + under3(x.d), 0) || 1;
+                const allocB = dists.map(x => {
+                    const slots = Math.round(TOTAL * under3(x.d) / totalU3);
+                    const ps = x.p.popShare || { spa: 0, chi: 0, eng: 0 };
+                    return { d: x.d, slots, spaSlots: slots * ps.spa, chiSlots: slots * ps.chi, engSlots: slots * ps.eng };
+                });
+
+                // ----- SCENARIO C: equity-corrected allocation -----
+                // Distribute 750 slots to fill the Spanish-segment shortfall in priority
+                // districts. All slots Spanish-capable (also English-bilingual since the
+                // registered Spanish providers all list English too).
+                const totalSpaDemand = dists.reduce((s, x) => s + (x.m.demandSpa || 0), 0) || 1;
+                const allocC = dists.map(x => {
+                    const slots = Math.round(TOTAL * (x.m.demandSpa || 0) / totalSpaDemand);
+                    return { d: x.d, slots, spaSlots: slots, chiSlots: 0, engSlots: slots };
+                });
+
+                // Aggregate per-district contributions to citywide-priority totals
+                const sumLang = (alloc, lang) => alloc.reduce((s, a) => s + a[lang + 'Slots'], 0);
+                const totalDemSpa = dists.reduce((s, x) => s + (x.m.demandSpa || 0), 0);
+                const totalDemChi = dists.reduce((s, x) => s + (x.m.demandChi || 0), 0);
+                const totalDemEng = dists.reduce((s, x) => s + (x.m.demandEng || 0), 0);
+                const curSupSpa = dists.reduce((s, x) => s + (x.m.supplySpa || 0), 0);
+                const curSupChi = dists.reduce((s, x) => s + (x.m.supplyChi || 0), 0);
+                const curSupEng = dists.reduce((s, x) => s + (x.m.supplyEng || 0), 0);
+
+                const buildRow = (label, addSpa, addChi, addEng) => ({
+                    label,
+                    addSpa: Math.round(addSpa), addChi: Math.round(addChi), addEng: Math.round(addEng),
+                    spaSup: Math.round(curSupSpa + addSpa), chiSup: Math.round(curSupChi + addChi), engSup: Math.round(curSupEng + addEng),
+                    spaRate: totalDemSpa > 0 ? ((curSupSpa + addSpa) / totalDemSpa) * 100 : 0,
+                    chiRate: totalDemChi > 0 ? ((curSupChi + addChi) / totalDemChi) * 100 : 0,
+                    engRate: totalDemEng > 0 ? ((curSupEng + addEng) / totalDemEng) * 100 : 0
+                });
+
+                return {
+                    today: buildRow('Today (no expansion)', 0, 0, 0),
+                    scenarioA: buildRow('A. Status-quo (likely)', sumLang(allocA, 'spa'), sumLang(allocA, 'chi'), sumLang(allocA, 'eng')),
+                    scenarioB: buildRow('B. Demand-proportional', sumLang(allocB, 'spa'), sumLang(allocB, 'chi'), sumLang(allocB, 'eng')),
+                    scenarioC: buildRow('C. Equity-corrected (Spanish-target)', sumLang(allocC, 'spa'), sumLang(allocC, 'chi'), sumLang(allocC, 'eng')),
+                    allocA, allocB, allocC,
+                    totalDemSpa: Math.round(totalDemSpa), totalDemChi: Math.round(totalDemChi), totalDemEng: Math.round(totalDemEng)
+                };
+            }, [marketByDistrict, pressureByDistrict]);
+
+            // Roll up Scenario A allocation by corridor to show where the 750 slots will
+            // concentrate geographically and by language.
+            const expansionByCorridor = useMemo(() => {
+                const sumIn = (alloc, dists, key) => alloc.filter(a => dists.includes(a.d)).reduce((s, a) => s + (a[key] || 0), 0);
+                return Object.entries(CORRIDORS).map(([name, dists]) => {
+                    const m = marketByCorridor.find(c => c.name === name) || {};
+                    const aTot = sumIn(expansionImpact.allocA, dists, 'slots');
+                    const aSpa = sumIn(expansionImpact.allocA, dists, 'spaSlots');
+                    const aChi = sumIn(expansionImpact.allocA, dists, 'chiSlots');
+                    const bTot = sumIn(expansionImpact.allocB, dists, 'slots');
+                    const bSpa = sumIn(expansionImpact.allocB, dists, 'spaSlots');
+                    const bChi = sumIn(expansionImpact.allocB, dists, 'chiSlots');
+                    const cTot = sumIn(expansionImpact.allocC, dists, 'slots');
+                    const cSpa = sumIn(expansionImpact.allocC, dists, 'spaSlots');
+                    const newSpaA = (m.supSpa || 0) + aSpa;
+                    const newChiA = (m.supChi || 0) + aChi;
+                    const newSpaB = (m.supSpa || 0) + bSpa;
+                    return {
+                        name, dists,
+                        demSpa: m.demSpa || 0, demChi: m.demChi || 0,
+                        curSupSpa: m.supSpa || 0, curSupChi: m.supChi || 0,
+                        curRateSpa: m.rateSpa, curRateChi: m.rateChi,
+                        aTot: Math.round(aTot), aSpa: Math.round(aSpa), aChi: Math.round(aChi),
+                        bTot: Math.round(bTot), bSpa: Math.round(bSpa), bChi: Math.round(bChi),
+                        cTot: Math.round(cTot), cSpa: Math.round(cSpa),
+                        rateA_Spa: m.demSpa > 0 ? (newSpaA / m.demSpa) * 100 : null,
+                        rateA_Chi: m.demChi > 0 ? (newChiA / m.demChi) * 100 : null,
+                        rateB_Spa: m.demSpa > 0 ? (newSpaB / m.demSpa) * 100 : null
+                    };
+                });
+            }, [expansionImpact, marketByCorridor]);
+
+            const voiceGapTotals = useMemo(() => {
+                const snap = window.PROVIDER_SNAPSHOT?.providers || [];
+                const totalFcc = supplyByDistrict.total?.fccCount || 0;
+                const langs = { Spanish: 0, Cantonese: 0, Mandarin: 0, English: 0 };
+                snap.forEach(p => {
+                    (p.languages || []).forEach(l => { if (langs[l] !== undefined) langs[l]++; });
+                });
+                // Citywide population totals (sum all SF ZIPs in the ACS snapshot)
+                const popTotals = { tot: 0, eng: 0, spa: 0, chi: 0 };
+                Object.values(ACS_LANG_BY_ZIP).forEach(a => {
+                    popTotals.tot += a.pop; popTotals.eng += a.eng; popTotals.spa += a.spa; popTotals.chi += a.chi;
+                });
+                const chineseVoices = Math.max(langs.Cantonese, langs.Mandarin); // unique Chinese-speaking
+                return {
+                    totalCcldFcc: totalFcc,
+                    registeredN: snap.length,
+                    voiceCoverage: totalFcc > 0 ? snap.length / totalFcc : 0,
+                    voices: { Spanish: langs.Spanish, Cantonese: langs.Cantonese, Mandarin: langs.Mandarin, English: langs.English, Chinese: chineseVoices },
+                    pop: popTotals,
+                    coverage: {
+                        spa: popTotals.spa > 0 ? (langs.Spanish / popTotals.spa) * 10000 : 0,
+                        chi: popTotals.chi > 0 ? (chineseVoices / popTotals.chi) * 10000 : 0,
+                        eng: popTotals.eng > 0 ? (langs.English / popTotals.eng) * 10000 : 0
+                    }
+                };
+            }, [supplyByDistrict]);
 
             const zipChartRef = useRef(null);
             const zipChartInst = useRef(null);
@@ -872,7 +1513,13 @@
                 if (!landscapeChartRef.current || !data.length) return;
                 if (landscapeChartInst.current) landscapeChartInst.current.destroy();
 
-                const labels = DEMAND_DATA.map(d => 'D' + d.district);
+                const labels = DEMAND_DATA.map(d => {
+                    if (!saturationOn) return 'D' + d.district;
+                    const u6 = d.under3 + d.age3_4 + d.age5;
+                    const slots = saturationMode === 'elfa' ? (supplyByDistrict[d.district]?.elfaCap || 0) : (supplyByDistrict[d.district]?.totalCap || 0);
+                    const sat = getSaturation(slots, u6);
+                    return sat.emoji + ' D' + d.district;
+                });
                 const elfaCapData = DEMAND_DATA.map(d => supplyByDistrict[d.district]?.elfaCap || 0);
                 const nonElfaCapData = DEMAND_DATA.map(d => {
                     const s = supplyByDistrict[d.district] || {};
@@ -1734,24 +2381,60 @@
                                 {key: 'citywide', label: 'Citywide'},
                                 {key: 'district', label: 'District'},
                                 {key: 'corridor', label: 'Corridor'},
-                                {key: 'zip', label: 'ZIP Code'}
+                                {key: 'zip', label: 'ZIP Code'},
+                                {key: 'pressure', label: 'Pressure Lens'}
                             ].map(g => (
                                 <button key={g.key} className={`geo-btn ${geoView === g.key ? 'active' : ''}`}
                                     onClick={() => setGeoView(g.key)}>{g.label}</button>
                             ))}
                         </div>
 
+                        {/* Demand Pressure Lens toggle — DISABLED in production until ready. */}
+                        {/* All saturation-conditional code (pills, emojis, dynamic columns) */}
+                        {/* is gated by `saturationOn` which defaults to false and stays off */}
+                        {/* without this toggle. Re-enable by changing `false &&` → `true &&`. */}
+                        {false && geoView !== 'pressure' && (
+                            <div className="saturation-toggle-row">
+                                <label className="saturation-toggle">
+                                    <input type="checkbox" checked={saturationOn}
+                                        onChange={e => setSaturationOn(e.target.checked)} />
+                                    Show demand pressure
+                                </label>
+                                {saturationOn && (
+                                    <div className="saturation-mode-row">
+                                        <span>Mode:</span>
+                                        <button className={`saturation-mode-btn ${saturationMode==='total'?'active':''}`}
+                                            onClick={() => setSaturationMode('total')}>Total</button>
+                                        <button className={`saturation-mode-btn ${saturationMode==='elfa'?'active':''}`}
+                                            onClick={() => setSaturationMode('elfa')}>ELFA only</button>
+                                    </div>
+                                )}
+                                {saturationOn && (
+                                    <div style={{fontSize:'11px',color:'#888',marginLeft:'auto'}}>
+                                        🔥 &lt;0.40 tight &nbsp;·&nbsp; ↔️ 0.40–0.70 balanced &nbsp;·&nbsp; 🧊 &gt;0.70 slack
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         {/* ===== CITYWIDE VIEW ===== */}
                         {geoView === 'citywide' && <>
+                            <SaturationPill
+                                slots={saturationMode === 'elfa' ? (supplyByDistrict.total?.elfaCap || 0) : (supplyByDistrict.total?.totalCap || 0)}
+                                children={demandTotals.under6 || 0}
+                                mode={saturationMode} />
                             <div className="landscape-cards">
                                 <div className="landscape-card">
                                     <div className="lc-value">{supplyByDistrict.total?.totalCap?.toLocaleString() || '...'}</div>
                                     <div className="lc-label">Licensed Slots</div>
                                     <div className="lc-context">Serving {demandTotals.under6?.toLocaleString()} children under 6 (all incomes)</div>
                                 </div>
-                                <div className="landscape-card">
-                                    <div className="lc-value">{supplyByDistrict.total?.totalCap && demandTotals.under6 ? (supplyByDistrict.total.totalCap / demandTotals.under6).toFixed(2) : '...'}</div>
-                                    <div className="lc-label">Slots per Child</div>
+                                <div className={'landscape-card' + (saturationOn ? ' sat-row-' + getSaturation(saturationMode === 'elfa' ? (supplyByDistrict.total?.elfaCap || 0) : (supplyByDistrict.total?.totalCap || 0), demandTotals.under6).color : '')}>
+                                    <div className="lc-value">{(() => {
+                                        const slots = saturationMode === 'elfa' ? (supplyByDistrict.total?.elfaCap || 0) : (supplyByDistrict.total?.totalCap || 0);
+                                        return demandTotals.under6 > 0 ? (slots / demandTotals.under6).toFixed(2) : '...';
+                                    })()}</div>
+                                    <div className="lc-label">{saturationOn && saturationMode === 'elfa' ? 'ELFA Slots/Child' : 'Slots per Child'}</div>
                                     <div className="lc-context">Many families use parental, FFN, or license-exempt care by choice</div>
                                 </div>
                                 <div className="landscape-card">
@@ -1835,13 +2518,24 @@
                         {/* ===== DISTRICT VIEW ===== */}
                         {geoView === 'district' && <>
                             <div className="sub-selector">
-                                {DEMAND_DATA.map(d => (
-                                    <button key={d.district} className={`geo-btn ${selectedDistrict === d.district ? 'active' : ''}`}
-                                        onClick={() => setSelectedDistrict(d.district)} style={{padding: '7px 14px', fontSize: '12px'}}>
-                                        D{d.district}
-                                    </button>
-                                ))}
+                                {DEMAND_DATA.map(d => {
+                                    const u6 = d.under3 + d.age3_4 + d.age5;
+                                    const slots = saturationMode === 'elfa' ? (supplyByDistrict[d.district]?.elfaCap || 0) : (supplyByDistrict[d.district]?.totalCap || 0);
+                                    const sat = saturationOn ? getSaturation(slots, u6) : null;
+                                    const dot = sat ? sat.emoji + ' ' : '';
+                                    return (
+                                        <button key={d.district} className={`geo-btn ${selectedDistrict === d.district ? 'active' : ''}`}
+                                            onClick={() => setSelectedDistrict(d.district)} style={{padding: '7px 14px', fontSize: '12px'}}>
+                                            {dot}D{d.district}
+                                        </button>
+                                    );
+                                })}
                             </div>
+
+                            <SaturationPill
+                                slots={saturationMode === 'elfa' ? selectedDistrictSupply.elfaCap : selectedDistrictSupply.totalCap}
+                                children={selectedDistrictDemand.under3 + selectedDistrictDemand.age3_4 + selectedDistrictDemand.age5}
+                                mode={saturationMode} />
 
                             <div className="landscape-cards">
                                 <div className="landscape-card">
@@ -1849,10 +2543,19 @@
                                     <div className="lc-label">Licensed Slots</div>
                                     <div className="lc-context">District {selectedDistrict}</div>
                                 </div>
-                                <div className="landscape-card">
-                                    <div className="lc-value">{(() => { const u6 = selectedDistrictDemand.under3 + selectedDistrictDemand.age3_4 + selectedDistrictDemand.age5; return u6 > 0 ? (selectedDistrictSupply.totalCap / u6).toFixed(2) : '-'; })()}</div>
-                                    <div className="lc-label">Slots per Child</div>
-                                    <div className="lc-context">Licensed slots / children under 6</div>
+                                <div className={'landscape-card' + (() => {
+                                    if (!saturationOn) return '';
+                                    const u6 = selectedDistrictDemand.under3 + selectedDistrictDemand.age3_4 + selectedDistrictDemand.age5;
+                                    const slots = saturationMode === 'elfa' ? selectedDistrictSupply.elfaCap : selectedDistrictSupply.totalCap;
+                                    return ' sat-row-' + getSaturation(slots, u6).color;
+                                })()}>
+                                    <div className="lc-value">{(() => {
+                                        const u6 = selectedDistrictDemand.under3 + selectedDistrictDemand.age3_4 + selectedDistrictDemand.age5;
+                                        const slots = (saturationOn && saturationMode === 'elfa') ? selectedDistrictSupply.elfaCap : selectedDistrictSupply.totalCap;
+                                        return u6 > 0 ? (slots / u6).toFixed(2) : '-';
+                                    })()}</div>
+                                    <div className="lc-label">{saturationOn && saturationMode === 'elfa' ? 'ELFA Slots/Child' : 'Slots per Child'}</div>
+                                    <div className="lc-context">{saturationOn && saturationMode === 'elfa' ? 'ELFA-contracted slots / children under 6' : 'Licensed slots / children under 6'}</div>
                                 </div>
                                 <div className="landscape-card">
                                     <div className="lc-value">{selectedDistrictSupply.elfaCap.toLocaleString()}</div>
@@ -1920,22 +2623,28 @@
                                             <th>ELFA Capacity</th>
                                             <th>ELFA %</th>
                                             <th>Children Under 6</th>
-                                            <th>Slots per Child</th>
+                                            <th>{saturationOn && saturationMode === 'elfa' ? 'ELFA Slots/Child' : 'Slots per Child'}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {allCorridorsTotals.map(c => {
                                             const elfaPct = c.supply.totalCap > 0 ? Math.round(c.supply.elfaCap / c.supply.totalCap * 100) : 0;
-                                            const spc = c.demand.under6 > 0 ? (c.supply.totalCap / c.demand.under6).toFixed(2) : '-';
-                                            return <tr key={c.name} style={{cursor: 'pointer'}} onClick={() => setCorridor(c.name)}
+                                            const totalRatio = c.demand.under6 > 0 ? c.supply.totalCap / c.demand.under6 : 0;
+                                            const elfaRatio = c.demand.under6 > 0 ? c.supply.elfaCap / c.demand.under6 : 0;
+                                            const visibleRatio = (saturationOn && saturationMode === 'elfa') ? elfaRatio : totalRatio;
+                                            const slots = saturationMode === 'elfa' ? c.supply.elfaCap : c.supply.totalCap;
+                                            const sat = saturationOn ? getSaturation(slots, c.demand.under6) : null;
+                                            const satClass = sat ? 'sat-row-' + sat.color : '';
+                                            const namePrefix = sat ? sat.emoji + ' ' : '';
+                                            return <tr key={c.name} className={satClass} style={{cursor: 'pointer'}} onClick={() => setCorridor(c.name)}
                                                 title={'Click to view ' + c.name + ' detail below'}>
-                                                <td>{c.name}</td>
+                                                <td>{namePrefix}{c.name}</td>
                                                 <td style={{fontWeight: 400}}>D{c.dists.join(', D')}</td>
                                                 <td>{c.supply.totalCap.toLocaleString()}</td>
                                                 <td>{c.supply.elfaCap.toLocaleString()}</td>
                                                 <td>{elfaPct}%</td>
                                                 <td>{c.demand.under6.toLocaleString()}</td>
-                                                <td>{spc}</td>
+                                                <td style={{fontWeight: saturationOn ? 700 : 400}}>{visibleRatio > 0 ? visibleRatio.toFixed(2) : '-'}</td>
                                             </tr>;
                                         })}
                                     </tbody>
@@ -1946,13 +2655,25 @@
                             <h3 style={{marginTop: '32px', paddingTop: '24px', borderTop: '2px solid #e0e0e0'}}>Corridor Detail</h3>
 
                             <div className="sub-selector">
-                                {Object.entries(CORRIDORS).map(([name, dists]) => (
+                                {Object.entries(CORRIDORS).map(([name, dists]) => {
+                                    const corr = allCorridorsTotals.find(x => x.name === name);
+                                    const slots = corr ? (saturationMode === 'elfa' ? corr.supply.elfaCap : corr.supply.totalCap) : 0;
+                                    const u6 = corr ? corr.demand.under6 : 0;
+                                    const sat = saturationOn ? getSaturation(slots, u6) : null;
+                                    const dot = sat ? sat.emoji + ' ' : '';
+                                    return (
                                     <button key={name} className={`geo-btn ${corridor === name ? 'active' : ''}`}
                                         onClick={() => setCorridor(name)} style={{padding: '7px 14px', fontSize: '12px'}}>
-                                        {name} <span className="corridor-dists">(D{dists.join(', D')})</span>
+                                        {dot}{name} <span className="corridor-dists">(D{dists.join(', D')})</span>
                                     </button>
-                                ))}
+                                    );
+                                })}
                             </div>
+
+                            <SaturationPill
+                                slots={saturationMode === 'elfa' ? corridorSupplyTotals.elfaCap : corridorSupplyTotals.totalCap}
+                                children={corridorDemandTotals.under6}
+                                mode={saturationMode} />
 
                             <div className="landscape-cards">
                                 <div className="landscape-card">
@@ -1970,10 +2691,17 @@
                                     <div className="lc-label">Children Under 6</div>
                                     <div className="lc-context">All incomes in corridor</div>
                                 </div>
-                                <div className="landscape-card">
-                                    <div className="lc-value">{corridorDemandTotals.under6 > 0 ? (corridorSupplyTotals.totalCap / corridorDemandTotals.under6).toFixed(2) : '-'}</div>
-                                    <div className="lc-label">Slots per Child</div>
-                                    <div className="lc-context">Licensed slots / children under 6</div>
+                                <div className={'landscape-card' + (() => {
+                                    if (!saturationOn) return '';
+                                    const slots = saturationMode === 'elfa' ? corridorSupplyTotals.elfaCap : corridorSupplyTotals.totalCap;
+                                    return ' sat-row-' + getSaturation(slots, corridorDemandTotals.under6).color;
+                                })()}>
+                                    <div className="lc-value">{(() => {
+                                        const slots = (saturationOn && saturationMode === 'elfa') ? corridorSupplyTotals.elfaCap : corridorSupplyTotals.totalCap;
+                                        return corridorDemandTotals.under6 > 0 ? (slots / corridorDemandTotals.under6).toFixed(2) : '-';
+                                    })()}</div>
+                                    <div className="lc-label">{saturationOn && saturationMode === 'elfa' ? 'ELFA Slots/Child' : 'Slots per Child'}</div>
+                                    <div className="lc-context">{saturationOn && saturationMode === 'elfa' ? 'ELFA-contracted slots / children under 6' : 'Licensed slots / children under 6'}</div>
                                 </div>
                             </div>
 
@@ -1987,22 +2715,28 @@
                                             <th>ELFA Capacity</th>
                                             <th>ELFA %</th>
                                             <th>All Children Under 6</th>
-                                            <th>Slots per Child</th>
+                                            <th>{saturationOn && saturationMode === 'elfa' ? 'ELFA Slots/Child' : 'Slots per Child'}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {corridorDemand.map(d => {
                                             const supply = supplyByDistrict[d.district] || {};
                                             const under6 = d.under3 + d.age3_4 + d.age5;
-                                            const slotsPerChild = under6 > 0 ? (supply.totalCap / under6).toFixed(2) : '-';
+                                            const totalRatio = under6 > 0 ? supply.totalCap / under6 : 0;
+                                            const elfaRatio = under6 > 0 ? (supply.elfaCap || 0) / under6 : 0;
+                                            const visibleRatio = (saturationOn && saturationMode === 'elfa') ? elfaRatio : totalRatio;
+                                            const slotsForSat = saturationMode === 'elfa' ? (supply.elfaCap || 0) : (supply.totalCap || 0);
+                                            const sat = saturationOn ? getSaturation(slotsForSat, under6) : null;
+                                            const satClass = sat ? 'sat-row-' + sat.color : '';
+                                            const namePrefix = sat ? sat.emoji + ' ' : '';
                                             const elfaPct = supply.totalCap > 0 ? Math.round((supply.elfaCap || 0) / supply.totalCap * 100) : 0;
-                                            return <tr key={d.district}>
-                                                <td>District {d.district}</td>
+                                            return <tr key={d.district} className={satClass}>
+                                                <td>{namePrefix}District {d.district}</td>
                                                 <td>{(supply.totalCap || 0).toLocaleString()}</td>
                                                 <td>{(supply.elfaCap || 0).toLocaleString()}</td>
                                                 <td>{elfaPct}%</td>
                                                 <td>{under6.toLocaleString()}</td>
-                                                <td>{slotsPerChild}</td>
+                                                <td style={{fontWeight: saturationOn ? 700 : 400}}>{visibleRatio > 0 ? visibleRatio.toFixed(2) : '-'}</td>
                                             </tr>;
                                         })}
                                     </tbody>
@@ -2033,11 +2767,21 @@
                             <div className="sub-selector">
                                 <select value={selectedZip} onChange={e => setSelectedZip(e.target.value)}
                                     style={{padding: '9px 14px', borderRadius: '20px', border: '1px solid #ddd', fontSize: '13px', fontWeight: 600, cursor: 'pointer'}}>
-                                    {ZIP_DEMAND_DATA.map(z => (
-                                        <option key={z.zip} value={z.zip}>{z.zip}</option>
-                                    ))}
+                                    {ZIP_DEMAND_DATA.map(z => {
+                                        const u6 = z.under3 + z.age3_4 + z.age5;
+                                        const slots = saturationMode === 'elfa' ? (supplyByZip[z.zip]?.elfaCap || 0) : (supplyByZip[z.zip]?.totalCap || 0);
+                                        const sat = saturationOn ? getSaturation(slots, u6) : null;
+                                        return (
+                                            <option key={z.zip} value={z.zip}>{sat ? sat.emoji + ' ' : ''}{z.zip}</option>
+                                        );
+                                    })}
                                 </select>
                             </div>
+
+                            <SaturationPill
+                                slots={saturationMode === 'elfa' ? selectedZipSupply.elfaCap : selectedZipSupply.totalCap}
+                                children={selectedZipDemand.under3 + selectedZipDemand.age3_4 + selectedZipDemand.age5}
+                                mode={saturationMode} />
 
                             <div className="landscape-cards">
                                 <div className="landscape-card">
@@ -2060,10 +2804,19 @@
                                     <div className="lc-label">Children Under 6</div>
                                     <div className="lc-context">All incomes</div>
                                 </div>
-                                <div className="landscape-card">
-                                    <div className="lc-value">{(() => { const u6 = selectedZipDemand.under3 + selectedZipDemand.age3_4 + selectedZipDemand.age5; return u6 > 0 ? (selectedZipSupply.totalCap / u6).toFixed(2) : '-'; })()}</div>
-                                    <div className="lc-label">Slots per Child</div>
-                                    <div className="lc-context">Licensed slots / children under 6</div>
+                                <div className={'landscape-card' + (() => {
+                                    if (!saturationOn) return '';
+                                    const u6 = selectedZipDemand.under3 + selectedZipDemand.age3_4 + selectedZipDemand.age5;
+                                    const slots = saturationMode === 'elfa' ? selectedZipSupply.elfaCap : selectedZipSupply.totalCap;
+                                    return ' sat-row-' + getSaturation(slots, u6).color;
+                                })()}>
+                                    <div className="lc-value">{(() => {
+                                        const u6 = selectedZipDemand.under3 + selectedZipDemand.age3_4 + selectedZipDemand.age5;
+                                        const slots = (saturationOn && saturationMode === 'elfa') ? selectedZipSupply.elfaCap : selectedZipSupply.totalCap;
+                                        return u6 > 0 ? (slots / u6).toFixed(2) : '-';
+                                    })()}</div>
+                                    <div className="lc-label">{saturationOn && saturationMode === 'elfa' ? 'ELFA Slots/Child' : 'Slots per Child'}</div>
+                                    <div className="lc-context">{saturationOn && saturationMode === 'elfa' ? 'ELFA-contracted slots / children under 6' : 'Licensed slots / children under 6'}</div>
                                 </div>
                             </div>
 
@@ -2081,14 +2834,24 @@
                                             <th style={{cursor:'pointer'}} onClick={() => handleZipSort('under6')}>Children &lt;6{zipSortArrow('under6')}</th>
                                             <th style={{cursor:'pointer'}} onClick={() => handleZipSort('le110')}>HH &le;110%{zipSortArrow('le110')}</th>
                                             <th style={{cursor:'pointer'}} onClick={() => handleZipSort('le200')}>HH &le;200%{zipSortArrow('le200')}</th>
-                                            <th style={{cursor:'pointer'}} onClick={() => handleZipSort('slotsPerChild')}>Slots/Child{zipSortArrow('slotsPerChild')}</th>
+                                            <th style={{cursor:'pointer'}} onClick={() => handleZipSort(saturationOn && saturationMode === 'elfa' ? 'elfaSlotsPerChild' : 'slotsPerChild')}>
+                                                {saturationOn && saturationMode === 'elfa' ? 'ELFA Slots/Child' : 'Slots/Child'}
+                                                {zipSortArrow(saturationOn && saturationMode === 'elfa' ? 'elfaSlotsPerChild' : 'slotsPerChild')}
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {zipTableData.map(row => (
-                                            <tr key={row.zip} className={row.zip === selectedZip ? 'row-highlighted' : ''}
+                                        {zipTableData.map(row => {
+                                            const slots = saturationMode === 'elfa' ? row.elfaCap : row.totalCap;
+                                            const sat = saturationOn ? getSaturation(slots, row.under6) : null;
+                                            const satClass = sat ? ' sat-row-' + sat.color : '';
+                                            const zipPrefix = sat ? sat.emoji + ' ' : '';
+                                            // Show the ratio that drives the saturation color, in bold
+                                            const visibleRatio = (saturationOn && saturationMode === 'elfa') ? row.elfaSlotsPerChild : row.slotsPerChild;
+                                            return (
+                                            <tr key={row.zip} className={(row.zip === selectedZip ? 'row-highlighted' : '') + satClass}
                                                 style={{cursor: 'pointer'}} onClick={() => setSelectedZip(row.zip)}>
-                                                <td>{row.zip}</td>
+                                                <td>{zipPrefix}{row.zip}</td>
                                                 <td>{row.districts}</td>
                                                 <td>{row.facilities.toLocaleString()}</td>
                                                 <td>{row.totalCap.toLocaleString()}</td>
@@ -2097,9 +2860,10 @@
                                                 <td>{row.under6.toLocaleString()}</td>
                                                 <td>{row.le110.toLocaleString()}</td>
                                                 <td>{row.le200.toLocaleString()}</td>
-                                                <td>{row.slotsPerChild > 0 ? row.slotsPerChild.toFixed(2) : '-'}</td>
+                                                <td style={{fontWeight: saturationOn ? 700 : 400}}>{visibleRatio > 0 ? visibleRatio.toFixed(2) : '-'}</td>
                                             </tr>
-                                        ))}
+                                            );
+                                        })}
                                     </tbody>
                                     <tfoot>
                                         <tr>
@@ -2123,6 +2887,386 @@
                                 <div className="chart-subtitle">Stacked bars compare licensed capacity (ELFA + non-ELFA) against ELFA-eligible households by ZIP code</div>
                                 <div style={{height: '400px'}}>
                                     <canvas ref={zipChartRef} className="landscape-chart-canvas"></canvas>
+                                </div>
+                            </div>
+                        </>}
+
+                        {/* ===== PRESSURE LENS ===== */}
+                        {geoView === 'pressure' && <>
+                            <div style={{background:'#fef7e8',border:'1px solid #f0c674',padding:'12px 16px',borderRadius:'6px',marginBottom:'18px',fontSize:'13px',lineHeight:1.5}}>
+                                <strong>Reading this lens.</strong> Most dashboards answer "how much capacity, how much demand." This one asks <em>who bears the cost of expansion</em>. It looks for districts where Family Child Care homes are concentrated, ELFA-funded center capacity is pressing in alongside them, and where the providers we hear from in the registry don't match the providers actually licensed on the ground &mdash; a survivorship gap.
+                                <br/><br/>
+                                <strong>Caveat &mdash; small N.</strong> Language coverage is from the {window.PROVIDER_SNAPSHOT?.n || 78} self-registered FCCs at familychildcaresf.com (vs ~{supplyByDistrict.total?.fccCount || '...'} CCLD-licensed FCCs citywide). The registry skews Chinese-speaking. Treat language signals as directional: where Spanish coverage looks thin, that may reflect who is registering, not who is operating.
+                            </div>
+
+                            <div className="landscape-cards">
+                                <div className="landscape-card">
+                                    <div className="lc-value">{supplyByDistrict.total?.fccCount?.toLocaleString() || '...'}</div>
+                                    <div className="lc-label">Licensed FCC Homes</div>
+                                    <div className="lc-context">Small + large family child care, citywide</div>
+                                </div>
+                                <div className="landscape-card">
+                                    <div className="lc-value">{voiceGapTotals.registeredN} <span style={{fontSize:'14px',color:'#666',fontWeight:400}}>of {voiceGapTotals.totalCcldFcc.toLocaleString()}</span></div>
+                                    <div className="lc-label">Voices in Registry</div>
+                                    <div className="lc-context">{(voiceGapTotals.voiceCoverage * 100).toFixed(0)}% of CCLD-licensed FCCs &mdash; the rest are silent</div>
+                                </div>
+                                <div className="landscape-card">
+                                    <div className="lc-value">{voiceGapTotals.voices.Spanish} <span style={{fontSize:'14px',color:'#666',fontWeight:400}}>voices</span></div>
+                                    <div className="lc-label">Spanish coverage</div>
+                                    <div className="lc-context">{voiceGapTotals.coverage.spa.toFixed(2)} per 10K Spanish-speaking residents (citywide pop {voiceGapTotals.pop.spa.toLocaleString()})</div>
+                                </div>
+                                <div className="landscape-card">
+                                    <div className="lc-value">{voiceGapTotals.voices.Chinese} <span style={{fontSize:'14px',color:'#666',fontWeight:400}}>voices</span></div>
+                                    <div className="lc-label">Chinese coverage</div>
+                                    <div className="lc-context">{voiceGapTotals.coverage.chi.toFixed(2)} per 10K Chinese-speaking residents (citywide pop {voiceGapTotals.pop.chi.toLocaleString()})</div>
+                                </div>
+                            </div>
+
+                            <h3>Corridor Roll-Up &mdash; Where the Two Markets Live</h3>
+                            <div className="chart-subtitle" style={{marginBottom:'8px'}}>
+                                Same Westside / North-Central / South-Central / Southeast groupings used elsewhere in this dashboard. Aggregating to corridors compresses 11 districts into 4 patterns and makes the Spanish-vs-Chinese-market split easier to read at a glance. Voice coverage = registered providers ÷ CCLD-licensed FCCs in the corridor.
+                            </div>
+                            <div className="landscape-table-wrap">
+                                <table className="landscape-table">
+                                    <thead>
+                                        <tr>
+                                            <th rowSpan="2">Corridor</th>
+                                            <th rowSpan="2">Districts</th>
+                                            <th rowSpan="2">CCLD<br/>FCCs</th>
+                                            <th rowSpan="2">Reg.<br/>voices</th>
+                                            <th rowSpan="2">Voice<br/>coverage</th>
+                                            <th colSpan="3" style={{borderLeft:'2px solid #ccc'}}>Spanish market today</th>
+                                            <th colSpan="3" style={{borderLeft:'2px solid #ccc'}}>Chinese market today</th>
+                                            <th colSpan="2" style={{borderLeft:'2px solid #ccc'}}>After Scenario A</th>
+                                        </tr>
+                                        <tr>
+                                            <th style={{borderLeft:'2px solid #ccc'}}>Demand</th>
+                                            <th>Supply</th>
+                                            <th>/100</th>
+                                            <th style={{borderLeft:'2px solid #ccc'}}>Demand</th>
+                                            <th>Supply</th>
+                                            <th>/100</th>
+                                            <th style={{borderLeft:'2px solid #ccc'}}>Spa /100</th>
+                                            <th>Chi /100</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {marketByCorridor.map(c => {
+                                            const ec = expansionByCorridor.find(x => x.name === c.name) || {};
+                                            const fmt = (rt) => rt === null || rt === undefined ? '—' : rt.toFixed(1);
+                                            const rateColor = (rt) => rt == null ? '#aaa' : rt < 1 ? '#c0392b' : rt < 3 ? '#e67e22' : '#27ae60';
+                                            return (
+                                                <tr key={c.name}>
+                                                    <td><strong>{c.name}</strong></td>
+                                                    <td style={{fontSize:'11px',color:'#666'}}>{c.dists.map(d => 'D'+d).join(', ')}</td>
+                                                    <td>{c.fccN}</td>
+                                                    <td>{c.regN}</td>
+                                                    <td>{(c.voiceCoverage * 100).toFixed(0)}%</td>
+                                                    <td style={{borderLeft:'2px solid #ccc'}}>{c.demSpa.toLocaleString()}</td>
+                                                    <td>{c.supSpa}</td>
+                                                    <td><span style={{color: rateColor(c.rateSpa), fontWeight: 600}}>{fmt(c.rateSpa)}</span></td>
+                                                    <td style={{borderLeft:'2px solid #ccc'}}>{c.demChi.toLocaleString()}</td>
+                                                    <td>{c.supChi}</td>
+                                                    <td><span style={{color: rateColor(c.rateChi), fontWeight: 600}}>{fmt(c.rateChi)}</span></td>
+                                                    <td style={{borderLeft:'2px solid #ccc'}}><span style={{color: rateColor(ec.rateA_Spa), fontWeight: 600}}>{fmt(ec.rateA_Spa)}</span></td>
+                                                    <td><span style={{color: rateColor(ec.rateA_Chi), fontWeight: 600}}>{fmt(ec.rateA_Chi)}</span></td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div style={{marginTop:'10px',fontSize:'13px',color:'#444',lineHeight:1.6,padding:'10px 14px',background:'#f7f3ee',borderLeft:'3px solid #b88a4e',borderRadius:'4px'}}>
+                                <strong>Field validation note.</strong> These numbers describe what's <em>visible in registry data</em>. The deeper question &mdash; whether Spanish-speaking providers in the South-Central / Southeast corridors are running healthy businesses or quietly closing &mdash; can only be answered by talking to them in person. The corridor view points to which conversations would be most diagnostic: D9 Mission/Portola and D10/D11 Bayview/Excelsior, where Spanish demand is concentrated and registry visibility is near zero.
+                            </div>
+
+                            <h3 style={{marginTop:'28px'}}>Squeeze Score by District</h3>
+                            <div className="chart-subtitle" style={{marginBottom:'8px'}}>
+                                Combines FCC concentration (35%), ELFA pressure ratio (45%, capped at 5x), and inverse voice coverage (20%). High score = a district where FCCs are dense, ELFA-funded capacity is pressing in, and few providers are registered &mdash; the kind of place a conference attendee might not represent.
+                            </div>
+                            <div className="landscape-table-wrap">
+                                <table className="landscape-table">
+                                    <thead>
+                                        <tr>
+                                            <th>District</th>
+                                            <th>FCC Homes</th>
+                                            <th>FCC Cap.</th>
+                                            <th>ELFA Cap.</th>
+                                            <th>FCC % of Supply</th>
+                                            <th>ELFA Pressure</th>
+                                            <th>Registered</th>
+                                            <th>Voice Coverage</th>
+                                            <th>Spanish / Chinese / English (registered)</th>
+                                            <th>Squeeze Score</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {pressureRows.map(r => {
+                                            const elfaPctText = r.elfaPressure === 0 ? '0' : r.elfaPressure.toFixed(1) + 'x';
+                                            const score = Math.round(r.squeezeScore);
+                                            const scoreColor = score >= 70 ? '#c0392b' : score >= 50 ? '#e67e22' : score >= 30 ? '#f1c40f' : '#27ae60';
+                                            return (
+                                                <tr key={r.district}>
+                                                    <td><strong>D{r.district}</strong></td>
+                                                    <td>{r.fccCount}</td>
+                                                    <td>{r.fccCap.toLocaleString()}</td>
+                                                    <td>{r.elfaCap.toLocaleString()}</td>
+                                                    <td>{(r.fccConcentration * 100).toFixed(0)}%</td>
+                                                    <td>{elfaPctText}</td>
+                                                    <td>{r.registeredN}</td>
+                                                    <td>{(r.voiceCoverage * 100).toFixed(0)}%</td>
+                                                    <td style={{fontSize:'11px'}}>{r.langCounts.Spanish} / {r.langCounts.Cantonese + r.langCounts.Mandarin} / {r.langCounts.English}</td>
+                                                    <td><span style={{display:'inline-block',padding:'3px 9px',borderRadius:'10px',background:scoreColor,color:'white',fontWeight:600,fontSize:'12px'}}>{score}</span></td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <h3 style={{marginTop:'28px'}}>Language Gap &mdash; Population Baseline vs Registry</h3>
+                            <div className="chart-subtitle" style={{marginBottom:'8px'}}>
+                                Side-by-side: how many residents speak each language at home (ACS C16001, pop 5+) vs how many providers in the registry can serve that language. <strong>Coverage</strong> = registry voices per 10,000 residents speaking that language &mdash; an honest rate that doesn't normalize against the (already biased) registry total. Lower = more silence per resident need.
+                            </div>
+                            <div className="landscape-table-wrap">
+                                <table className="landscape-table">
+                                    <thead>
+                                        <tr>
+                                            <th>District</th>
+                                            <th>Pop 5+</th>
+                                            <th>Spanish residents<br/><span style={{fontWeight:400,fontSize:'10px',color:'#888'}}>count (% of pop)</span></th>
+                                            <th>Spanish voices<br/><span style={{fontWeight:400,fontSize:'10px',color:'#888'}}>raw count</span></th>
+                                            <th>Spanish coverage<br/><span style={{fontWeight:400,fontSize:'10px',color:'#888'}}>voices / 10K residents</span></th>
+                                            <th>Chinese residents<br/><span style={{fontWeight:400,fontSize:'10px',color:'#888'}}>count (% of pop)</span></th>
+                                            <th>Chinese voices<br/><span style={{fontWeight:400,fontSize:'10px',color:'#888'}}>raw count</span></th>
+                                            <th>Chinese coverage<br/><span style={{fontWeight:400,fontSize:'10px',color:'#888'}}>voices / 10K residents</span></th>
+                                            <th>English-only residents<br/><span style={{fontWeight:400,fontSize:'10px',color:'#888'}}>count (% of pop)</span></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {pressureRows.map(r => {
+                                            const pct = (n) => (n * 100).toFixed(0) + '%';
+                                            const cell = (count, share) => `${count.toLocaleString()} (${pct(share)})`;
+                                            // Coverage color: red if < 0.5 voice per 10K, orange < 1.5, green ≥ 1.5
+                                            const covColor = (c, popN) => popN < 200 ? '#aaa' : c === 0 ? '#c0392b' : c < 1.5 ? '#e67e22' : '#27ae60';
+                                            const covFmt = (c, popN) => popN < 200 ? '—' : c.toFixed(2);
+                                            return (
+                                                <tr key={r.district}>
+                                                    <td><strong>D{r.district}</strong></td>
+                                                    <td>{r.popTotal.toLocaleString()}</td>
+                                                    <td>{cell(r.popCounts.spa, r.popShare.spa)}</td>
+                                                    <td><strong>{r.regCounts.spa}</strong></td>
+                                                    <td><span style={{color: covColor(r.coverage.spa, r.popCounts.spa), fontWeight: 600}}>{covFmt(r.coverage.spa, r.popCounts.spa)}</span></td>
+                                                    <td>{cell(r.popCounts.chi, r.popShare.chi)}</td>
+                                                    <td><strong>{r.regCounts.chi}</strong></td>
+                                                    <td><span style={{color: covColor(r.coverage.chi, r.popCounts.chi), fontWeight: 600}}>{covFmt(r.coverage.chi, r.popCounts.chi)}</span></td>
+                                                    <td>{cell(r.popCounts.eng, r.popShare.eng)}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <h3 style={{marginTop:'28px'}}>Language-Segmented Market &mdash; Vacancies vs Demand</h3>
+                            <div className="chart-subtitle" style={{marginBottom:'8px'}}>
+                                If families pick programs by language match, supply &amp; demand isn't one market &mdash; it's three. For each district, reported vacant under-6 spots in programs that serve a given language, vs the children under 6 in households likely to speak that language (district under-6 demand &times; population language share). <strong>Vacancies / 100 kids</strong> = how visible an opening is to a family searching in that language. Higher = looser market (provider feels saturated). Lower = tighter market (family can't find a spot).
+                                <br/><span style={{color:'#888'}}>Caveat: under-6 demand by household language uses pop-5+ share as proxy (ACS doesn't tabulate under-5 by household language directly). Vacancies are from the {window.VACANCY_SNAPSHOT?.n || 50} active vacancy reports in the registry &mdash; same registry-bias caveat applies.</span>
+                            </div>
+                            <div className="landscape-table-wrap">
+                                <table className="landscape-table">
+                                    <thead>
+                                        <tr>
+                                            <th rowSpan="2">District</th>
+                                            <th rowSpan="2">Under-6<br/>kids (all)</th>
+                                            <th rowSpan="2">Vacancy<br/>reports</th>
+                                            <th colSpan="3" style={{borderLeft:'2px solid #ccc'}}>Spanish segment</th>
+                                            <th colSpan="3" style={{borderLeft:'2px solid #ccc'}}>Chinese segment</th>
+                                            <th colSpan="3" style={{borderLeft:'2px solid #ccc'}}>English segment</th>
+                                        </tr>
+                                        <tr>
+                                            <th style={{borderLeft:'2px solid #ccc'}}>Demand<br/><span style={{fontWeight:400,fontSize:'10px',color:'#888'}}>est. kids</span></th>
+                                            <th>Supply<br/><span style={{fontWeight:400,fontSize:'10px',color:'#888'}}>vacant spots</span></th>
+                                            <th>Per 100 kids<br/><span style={{fontWeight:400,fontSize:'10px',color:'#888'}}>visible openings</span></th>
+                                            <th style={{borderLeft:'2px solid #ccc'}}>Demand</th>
+                                            <th>Supply</th>
+                                            <th>Per 100 kids</th>
+                                            <th style={{borderLeft:'2px solid #ccc'}}>Demand</th>
+                                            <th>Supply</th>
+                                            <th>Per 100 kids</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {marketRows.map(r => {
+                                            const fmtRate = (rt) => rt === null ? '—' : rt.toFixed(1);
+                                            // Color: red if rate < 1 (very tight), orange < 3, green >= 3 (loose)
+                                            const rateColor = (rt, demand) => demand < 50 ? '#aaa' : rt === null ? '#aaa' : rt < 1 ? '#c0392b' : rt < 3 ? '#e67e22' : '#27ae60';
+                                            return (
+                                                <tr key={r.district}>
+                                                    <td><strong>D{r.district}</strong></td>
+                                                    <td>{r.under6.toLocaleString()}</td>
+                                                    <td>{r.vacCount}</td>
+                                                    <td style={{borderLeft:'2px solid #ccc'}}>{r.demandSpa.toLocaleString()}</td>
+                                                    <td><strong>{r.supplySpa}</strong></td>
+                                                    <td><span style={{color: rateColor(r.rateSpa, r.demandSpa), fontWeight: 600}}>{fmtRate(r.rateSpa)}</span></td>
+                                                    <td style={{borderLeft:'2px solid #ccc'}}>{r.demandChi.toLocaleString()}</td>
+                                                    <td><strong>{r.supplyChi}</strong></td>
+                                                    <td><span style={{color: rateColor(r.rateChi, r.demandChi), fontWeight: 600}}>{fmtRate(r.rateChi)}</span></td>
+                                                    <td style={{borderLeft:'2px solid #ccc'}}>{r.demandEng.toLocaleString()}</td>
+                                                    <td><strong>{r.supplyEng}</strong></td>
+                                                    <td><span style={{color: rateColor(r.rateEng, r.demandEng), fontWeight: 600}}>{fmtRate(r.rateEng)}</span></td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div style={{marginTop:'10px',fontSize:'13px',color:'#444',lineHeight:1.6,padding:'10px 14px',background:'#f0f6f0',borderLeft:'3px solid #27ae60',borderRadius:'4px'}}>
+                                <strong>What this answers:</strong> The provider who tells you "I don't have a vacancy problem" is competing in the segment where supply is dense relative to demand &mdash; usually Chinese in D1/D4/D11 (rates of 5+ openings per 100 kids). The Hispanic family in Mission or Bayview is searching a segment where the visible supply is &lt; 1 opening per 100 kids, sometimes literally zero. Same city, two different markets.
+                            </div>
+
+                            <h3 style={{marginTop:'28px'}}>Forward Look &mdash; 750-Slot ELFA Expansion (Summer 2026)</h3>
+                            <div style={{background:'#eef4fb',border:'1px solid #b8d4ec',padding:'12px 16px',borderRadius:'6px',marginBottom:'14px',fontSize:'13px',lineHeight:1.55}}>
+                                <strong>The plan.</strong> Mayor Lurie announced ~750 new infant/toddler ELFA slots for Summer 2026, a mix of FCC homes and centers. Provider applications open <strong>Apr 30 &ndash; Jun 30, 2026</strong>. Free for families &le;150% AMI ($230K), 50% subsidy &le;200% AMI ($310K). Priority neighborhoods: <em>Sunset, Parkside, Richmond, Mission, Bayview, Portola, Mission Bay, Excelsior, Glen Park, SoMa</em> (≈ districts 1, 4, 6, 7, 8, 9, 10, 11).
+                                <br/><br/>
+                                <strong>The catch in the ranking.</strong> Provider points: <strong>5</strong> for serving infant/toddler, <strong>1</strong> for CalWORKs, <strong>1</strong> for marginalized-population expertise, <strong>1</strong> for IFSP/IEP. Tiebreaker: higher enrollment. <strong>No language priority. No geographic equity priority in the points.</strong> Neighborhood priority lives in the marketing of the application, not the scoring rubric. So slots flow to whoever applies and ranks well &mdash; which structurally favors existing well-resourced ELFA providers, who skew Chinese-speaking in this city.
+                            </div>
+
+                            <div className="chart-subtitle" style={{marginBottom:'8px'}}>
+                                Three allocation scenarios, all summed across the 8 priority districts. Demand denominators are kids under 6 estimated to live in households of that home language; supply is reported vacant under-6 spots in programs offering that language.
+                            </div>
+                            <div className="landscape-table-wrap">
+                                <table className="landscape-table">
+                                    <thead>
+                                        <tr>
+                                            <th rowSpan="2">Scenario</th>
+                                            <th colSpan="3" style={{borderLeft:'2px solid #ccc'}}>Spanish segment</th>
+                                            <th colSpan="3" style={{borderLeft:'2px solid #ccc'}}>Chinese segment</th>
+                                            <th colSpan="3" style={{borderLeft:'2px solid #ccc'}}>English segment</th>
+                                        </tr>
+                                        <tr>
+                                            <th style={{borderLeft:'2px solid #ccc'}}>+New<br/><span style={{fontWeight:400,fontSize:'10px',color:'#888'}}>spots added</span></th>
+                                            <th>Total supply</th>
+                                            <th>Per 100 kids</th>
+                                            <th style={{borderLeft:'2px solid #ccc'}}>+New</th>
+                                            <th>Total supply</th>
+                                            <th>Per 100 kids</th>
+                                            <th style={{borderLeft:'2px solid #ccc'}}>+New</th>
+                                            <th>Total supply</th>
+                                            <th>Per 100 kids</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {[expansionImpact.today, expansionImpact.scenarioA, expansionImpact.scenarioB, expansionImpact.scenarioC].map(r => {
+                                            const rateColor = (rt) => rt < 1 ? '#c0392b' : rt < 3 ? '#e67e22' : '#27ae60';
+                                            const isToday = r.label.startsWith('Today');
+                                            return (
+                                                <tr key={r.label} style={isToday ? {background:'#fafafa', fontWeight:500} : {}}>
+                                                    <td style={{textAlign:'left'}}><strong>{r.label}</strong></td>
+                                                    <td style={{borderLeft:'2px solid #ccc'}}>{isToday ? '—' : '+' + r.addSpa}</td>
+                                                    <td>{r.spaSup}</td>
+                                                    <td><span style={{color: rateColor(r.spaRate), fontWeight: 600}}>{r.spaRate.toFixed(1)}</span></td>
+                                                    <td style={{borderLeft:'2px solid #ccc'}}>{isToday ? '—' : '+' + r.addChi}</td>
+                                                    <td>{r.chiSup}</td>
+                                                    <td><span style={{color: rateColor(r.chiRate), fontWeight: 600}}>{r.chiRate.toFixed(1)}</span></td>
+                                                    <td style={{borderLeft:'2px solid #ccc'}}>{isToday ? '—' : '+' + r.addEng}</td>
+                                                    <td>{r.engSup}</td>
+                                                    <td><span style={{color: rateColor(r.engRate), fontWeight: 600}}>{r.engRate.toFixed(1)}</span></td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                    <tfoot style={{background:'#fafafa',fontSize:'11px',color:'#666'}}>
+                                        <tr>
+                                            <td style={{textAlign:'left'}}>Demand (kids under 6 in priority districts)</td>
+                                            <td colSpan="3" style={{borderLeft:'2px solid #ccc'}}>{expansionImpact.totalDemSpa.toLocaleString()} Spanish-speaking</td>
+                                            <td colSpan="3" style={{borderLeft:'2px solid #ccc'}}>{expansionImpact.totalDemChi.toLocaleString()} Chinese-speaking</td>
+                                            <td colSpan="3" style={{borderLeft:'2px solid #ccc'}}>{expansionImpact.totalDemEng.toLocaleString()} English-only</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+
+                            <h4 style={{marginTop:'18px',marginBottom:'8px'}}>Per-district allocation under each scenario</h4>
+                            <div className="landscape-table-wrap">
+                                <table className="landscape-table">
+                                    <thead>
+                                        <tr>
+                                            <th>District</th>
+                                            <th colSpan="4" style={{borderLeft:'2px solid #ccc'}}>A. Status-quo</th>
+                                            <th colSpan="4" style={{borderLeft:'2px solid #ccc'}}>B. Demand-proportional</th>
+                                            <th colSpan="4" style={{borderLeft:'2px solid #ccc'}}>C. Equity-corrected</th>
+                                        </tr>
+                                        <tr>
+                                            <th></th>
+                                            <th style={{borderLeft:'2px solid #ccc'}}>Total</th><th>Spa</th><th>Chi</th><th>Eng</th>
+                                            <th style={{borderLeft:'2px solid #ccc'}}>Total</th><th>Spa</th><th>Chi</th><th>Eng</th>
+                                            <th style={{borderLeft:'2px solid #ccc'}}>Total</th><th>Spa</th><th>Chi</th><th>Eng</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {ELFA_EXPANSION.priorityDistricts.map(d => {
+                                            const a = expansionImpact.allocA.find(x => x.d === d) || {slots:0,spaSlots:0,chiSlots:0,engSlots:0};
+                                            const b = expansionImpact.allocB.find(x => x.d === d) || {slots:0,spaSlots:0,chiSlots:0,engSlots:0};
+                                            const c = expansionImpact.allocC.find(x => x.d === d) || {slots:0,spaSlots:0,chiSlots:0,engSlots:0};
+                                            return (
+                                                <tr key={d}>
+                                                    <td><strong>D{d}</strong></td>
+                                                    <td style={{borderLeft:'2px solid #ccc'}}><strong>{a.slots}</strong></td>
+                                                    <td>{Math.round(a.spaSlots)}</td>
+                                                    <td>{Math.round(a.chiSlots)}</td>
+                                                    <td>{Math.round(a.engSlots)}</td>
+                                                    <td style={{borderLeft:'2px solid #ccc'}}><strong>{b.slots}</strong></td>
+                                                    <td>{Math.round(b.spaSlots)}</td>
+                                                    <td>{Math.round(b.chiSlots)}</td>
+                                                    <td>{Math.round(b.engSlots)}</td>
+                                                    <td style={{borderLeft:'2px solid #ccc'}}><strong>{c.slots}</strong></td>
+                                                    <td>{Math.round(c.spaSlots)}</td>
+                                                    <td>{Math.round(c.chiSlots)}</td>
+                                                    <td>{Math.round(c.engSlots)}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div style={{marginTop:'14px',fontSize:'13px',color:'#444',lineHeight:1.65,padding:'12px 14px',background:'#fff5f5',borderLeft:'3px solid #c0392b',borderRadius:'4px'}}>
+                                <strong>Bottom line.</strong> Under the announced ranking, Scenario A is the most likely outcome. ~{expansionImpact.scenarioA.addChi} of the 750 new slots flow to Chinese-capable programs (already over-supplied at {expansionImpact.scenarioA.chiRate.toFixed(1)} per 100 kids); only ~{expansionImpact.scenarioA.addSpa} reach Spanish-capable programs (still {expansionImpact.scenarioA.spaRate.toFixed(1)} per 100 kids in priority districts). The expansion will further widen the language gap unless DEC explicitly weights language access into the ranking, runs Spanish-language outreach during the application window, or recruits new Spanish-speaking FCCs into the network. The 5-point infant/toddler bonus is the dominant factor; everything else is a tiebreaker.
+                            </div>
+
+                            <h3 style={{marginTop:'28px'}}>The Voice Gap</h3>
+                            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'24px'}}>
+                                <div>
+                                    <div className="chart-subtitle" style={{marginBottom:'8px'}}>Who is registered vs who is licensed</div>
+                                    <div className="landscape-table-wrap">
+                                        <table className="landscape-table">
+                                            <tbody>
+                                                <tr><td style={{textAlign:'left'}}>CCLD-Licensed FCC Homes</td><td>{voiceGapTotals.totalCcldFcc.toLocaleString()}</td></tr>
+                                                <tr><td style={{textAlign:'left'}}>Self-Registered Providers</td><td>{voiceGapTotals.registeredN}</td></tr>
+                                                <tr><td style={{textAlign:'left'}}>Voice Coverage</td><td>{(voiceGapTotals.voiceCoverage * 100).toFixed(0)}%</td></tr>
+                                                <tr><td style={{textAlign:'left'}}>Silent FCCs (no registry presence)</td><td>{(voiceGapTotals.totalCcldFcc - voiceGapTotals.registeredN).toLocaleString()}</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="chart-subtitle" style={{marginBottom:'8px'}}>Voices in the registry, by language (raw counts &mdash; not normalized against the registry total, which is itself biased)</div>
+                                    <div className="landscape-table-wrap">
+                                        <table className="landscape-table">
+                                            <thead><tr><th style={{textAlign:'left'}}>Language</th><th>Voices</th><th>SF residents</th><th>Per 10K residents</th></tr></thead>
+                                            <tbody>
+                                                <tr><td style={{textAlign:'left'}}>English (only)</td><td>{voiceGapTotals.voices.English}</td><td>{voiceGapTotals.pop.eng.toLocaleString()}</td><td>{voiceGapTotals.coverage.eng.toFixed(2)}</td></tr>
+                                                <tr><td style={{textAlign:'left'}}>Chinese (Can+Man unique)</td><td>{voiceGapTotals.voices.Chinese}</td><td>{voiceGapTotals.pop.chi.toLocaleString()}</td><td>{voiceGapTotals.coverage.chi.toFixed(2)}</td></tr>
+                                                <tr><td style={{textAlign:'left'}}>&nbsp;&nbsp;&nbsp;Cantonese</td><td>{voiceGapTotals.voices.Cantonese}</td><td>&mdash;</td><td>&mdash;</td></tr>
+                                                <tr><td style={{textAlign:'left'}}>&nbsp;&nbsp;&nbsp;Mandarin</td><td>{voiceGapTotals.voices.Mandarin}</td><td>&mdash;</td><td>&mdash;</td></tr>
+                                                <tr><td style={{textAlign:'left'}}>Spanish</td><td>{voiceGapTotals.voices.Spanish}</td><td>{voiceGapTotals.pop.spa.toLocaleString()}</td><td>{voiceGapTotals.coverage.spa.toFixed(2)}</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div style={{marginTop:'10px',fontSize:'12px',color:'#666',lineHeight:1.5}}>
+                                        SF Mission (94110) has 5,503 households with kids under 6 and a large Hispanic provider base. The registry holds <strong>1</strong> Spanish-speaking provider in 94110. If a roomful of Hispanic providers say they're "fine," the registry suggests the harder question is who isn't in that room.
+                                    </div>
                                 </div>
                             </div>
                         </>}
