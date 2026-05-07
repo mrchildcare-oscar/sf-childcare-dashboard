@@ -2376,24 +2376,22 @@
                         </div>
 
                         {/* Geographic lens selector */}
+                        {/* "Pressure Lens" (language/concentration) tab hidden — not yet ready for production. */}
+                        {/* The view JSX still exists in the file; restore the entry below to bring it back. */}
                         <div className="geo-selector">
                             {[
                                 {key: 'citywide', label: 'Citywide'},
                                 {key: 'district', label: 'District'},
                                 {key: 'corridor', label: 'Corridor'},
-                                {key: 'zip', label: 'ZIP Code'},
-                                {key: 'pressure', label: 'Pressure Lens'}
+                                {key: 'zip', label: 'ZIP Code'}
                             ].map(g => (
                                 <button key={g.key} className={`geo-btn ${geoView === g.key ? 'active' : ''}`}
                                     onClick={() => setGeoView(g.key)}>{g.label}</button>
                             ))}
                         </div>
 
-                        {/* Demand Pressure Lens toggle — DISABLED in production until ready. */}
-                        {/* All saturation-conditional code (pills, emojis, dynamic columns) */}
-                        {/* is gated by `saturationOn` which defaults to false and stays off */}
-                        {/* without this toggle. Re-enable by changing `false &&` → `true &&`. */}
-                        {false && geoView !== 'pressure' && (
+                        {/* Demand Pressure Lens toggle — overlay tight/balanced/slack pills on each area */}
+                        {geoView !== 'pressure' && (
                             <div className="saturation-toggle-row">
                                 <label className="saturation-toggle">
                                     <input type="checkbox" checked={saturationOn}
