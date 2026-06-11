@@ -25,6 +25,9 @@
         .stat-value { font-size: 18px; font-weight: 700; }
         .stat-label { font-size: 11px; opacity: 0.9; text-transform: uppercase; }
         .help-icon { background: rgba(255,255,255,0.2); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-weight: bold; }
+        .share-btn { background: rgba(255,255,255,0.2); color: #fff; border: none; padding: 8px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; white-space: nowrap; transition: background 0.15s; }
+        .share-btn:hover { background: rgba(255,255,255,0.35); }
+        .share-btn.copied { background: rgba(76,175,80,0.85); }
 
         /* Layout */
         .container { max-width: 1600px; margin: 0 auto; padding: 20px; }
@@ -718,27 +721,37 @@
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
+        // ===== Shareable URL state =====
+        // Read once at load so filters/selections can be restored from a shared link.
+        // Defaults are omitted when writing back, so a pristine view = clean URL.
+        const SHARE_PARAMS = new URLSearchParams(window.location.search);
+        const pStr  = (k, d) => SHARE_PARAMS.has(k) ? SHARE_PARAMS.get(k) : d;
+        const pBool = (k, d) => SHARE_PARAMS.has(k) ? SHARE_PARAMS.get(k) === '1' : d;
+        const pInt  = (k, d) => SHARE_PARAMS.has(k) ? (parseInt(SHARE_PARAMS.get(k), 10) || d) : d;
+        const pArr  = (k, d) => SHARE_PARAMS.has(k) ? (SHARE_PARAMS.get(k) ? SHARE_PARAMS.get(k).split(',') : []) : d;
+
         const App = () => {
             const [data, setData] = useState([]);
-            const [search, setSearch] = useState('');
+            const [search, setSearch] = useState(() => pStr('q', ''));
             const [open, setOpen] = useState('type');
-            const [typeF, setTypeF] = useState([]);
-            const [statusF, setStatusF] = useState(['LICENSED']);
-            const [elfaF, setElfaF] = useState([]);
-            const [minCap, setMinCap] = useState('');
-            const [maxCap, setMaxCap] = useState('');
-            const [sfusdOnly, setSfusdOnly] = useState(false);
-            const [prekOnly, setPrekOnly] = useState(false);
-            const [tkOnly, setTkOnly] = useState(false);
-            const [headStartOnly, setHeadStartOnly] = useState(false);
-            const [csppOnly, setCsppOnly] = useState(false);
-            const [cctrOnly, setCctrOnly] = useState(false);
-            const [districtF, setDistrictF] = useState([]);
-            const [heatmap, setHeatmap] = useState(true);
-            const [markers, setMarkers] = useState(true);
+            const [typeF, setTypeF] = useState(() => pArr('type', []));
+            const [statusF, setStatusF] = useState(() => pArr('status', ['LICENSED']));
+            const [elfaF, setElfaF] = useState(() => pArr('elfa', []));
+            const [minCap, setMinCap] = useState(() => pStr('min', ''));
+            const [maxCap, setMaxCap] = useState(() => pStr('max', ''));
+            const [sfusdOnly, setSfusdOnly] = useState(() => pBool('sfusd', false));
+            const [prekOnly, setPrekOnly] = useState(() => pBool('prek', false));
+            const [tkOnly, setTkOnly] = useState(() => pBool('tk', false));
+            const [headStartOnly, setHeadStartOnly] = useState(() => pBool('hs', false));
+            const [csppOnly, setCsppOnly] = useState(() => pBool('cspp', false));
+            const [cctrOnly, setCctrOnly] = useState(() => pBool('cctr', false));
+            const [districtF, setDistrictF] = useState(() => pArr('dist', []));
+            const [heatmap, setHeatmap] = useState(() => pBool('heat', true));
+            const [markers, setMarkers] = useState(() => pBool('mark', true));
             const [modal, setModal] = useState(false);
             const [page, setPage] = useState(1);
-            const [tab, setTab] = useState('landscape');
+            const [tab, setTab] = useState(() => pStr('tab', 'landscape'));
+            const [copied, setCopied] = useState(false);
             const [mapBoundsFilter, setMapBoundsFilter] = useState(false);
             const [currentBounds, setCurrentBounds] = useState(null);
 
@@ -890,16 +903,16 @@
             }, []);
 
             // ===== Geographic lens state =====
-            const [geoView, setGeoView] = useState('citywide');
-            const [selectedDistrict, setSelectedDistrict] = useState(1);
-            const [selectedZip, setSelectedZip] = useState('94102');
+            const [geoView, setGeoView] = useState(() => pStr('geo', 'citywide'));
+            const [selectedDistrict, setSelectedDistrict] = useState(() => pInt('d', 1));
+            const [selectedZip, setSelectedZip] = useState(() => pStr('zip', '94102'));
 
             // ===== Demand Pressure Lens state =====
             // Neutral framing — reads supply/demand pressure without "good/bad" valence.
             // Bands: <0.40 tight (high demand pressure), 0.40-0.70 balanced (~SF avg 0.55),
             // >0.70 slack (supply outpaces demand). Anchor: federal "child care desert" = <0.33.
-            const [saturationOn, setSaturationOn] = useState(false);
-            const [saturationMode, setSaturationMode] = useState('total'); // 'total' | 'elfa'
+            const [saturationOn, setSaturationOn] = useState(() => pBool('sat', false));
+            const [saturationMode, setSaturationMode] = useState(() => pStr('satmode', 'total')); // 'total' | 'elfa'
 
             // Compute pressure ratio + label/color/emoji for a slots/children pair.
             // Color uses a neutral teal-intensity gradient (no red/green moral coding).
@@ -942,7 +955,53 @@
             };
 
             // ===== Corridor analysis =====
-            const [corridor, setCorridor] = useState('Westside');
+            const [corridor, setCorridor] = useState(() => pStr('cor', 'Westside'));
+
+            // ===== Keep the address bar in sync with the current view =====
+            // Writes only non-default values, then a shared link restores the exact
+            // filters/selections that produced the numbers on screen.
+            useEffect(() => {
+                const p = new URLSearchParams();
+                if (tab !== 'landscape') p.set('tab', tab);
+                if (search) p.set('q', search);
+                if (typeF.length) p.set('type', typeF.join(','));
+                const statusDefault = statusF.length === 1 && statusF[0] === 'LICENSED';
+                if (!statusDefault) p.set('status', statusF.join(','));
+                if (elfaF.length) p.set('elfa', elfaF.join(','));
+                if (minCap) p.set('min', minCap);
+                if (maxCap) p.set('max', maxCap);
+                if (districtF.length) p.set('dist', districtF.join(','));
+                if (sfusdOnly) p.set('sfusd', '1');
+                if (prekOnly) p.set('prek', '1');
+                if (tkOnly) p.set('tk', '1');
+                if (headStartOnly) p.set('hs', '1');
+                if (csppOnly) p.set('cspp', '1');
+                if (cctrOnly) p.set('cctr', '1');
+                if (!heatmap) p.set('heat', '0');
+                if (!markers) p.set('mark', '0');
+                if (geoView !== 'citywide') p.set('geo', geoView);
+                if (selectedDistrict !== 1) p.set('d', String(selectedDistrict));
+                if (selectedZip !== '94102') p.set('zip', selectedZip);
+                if (corridor !== 'Westside') p.set('cor', corridor);
+                if (saturationOn) p.set('sat', '1');
+                if (saturationMode !== 'total') p.set('satmode', saturationMode);
+                const qs = p.toString();
+                const url = window.location.pathname + (qs ? '?' + qs : '') + window.location.hash;
+                window.history.replaceState(null, '', url);
+            }, [tab, search, typeF, statusF, elfaF, minCap, maxCap, districtF, sfusdOnly,
+                prekOnly, tkOnly, headStartOnly, csppOnly, cctrOnly, heatmap, markers,
+                geoView, selectedDistrict, selectedZip, corridor, saturationOn, saturationMode]);
+
+            // Copy a link to the current view to the clipboard (URL is already in sync).
+            const copyShareLink = useCallback(() => {
+                const url = window.location.href;
+                const done = () => { setCopied(true); setTimeout(() => setCopied(false), 1800); };
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(url).then(done).catch(() => window.prompt('Copy this link:', url));
+                } else {
+                    window.prompt('Copy this link:', url);
+                }
+            }, []);
 
             const corridorDemand = useMemo(() => {
                 const dists = CORRIDORS[corridor] || [];
@@ -2116,6 +2175,10 @@
                                     <div className="stat-pill"><div className="stat-value">{supplyByDistrict.total?.totalCap && demandTotals.under6 ? (supplyByDistrict.total.totalCap / demandTotals.under6).toFixed(2) : '...'}</div><div className="stat-label">Slots/Child</div></div>
                                     <div className="stat-pill"><div className="stat-value">{demandTotals.under6?.toLocaleString()}</div><div className="stat-label">All Children &lt;6</div></div>
                                 </>}
+                                <button className={'share-btn' + (copied ? ' copied' : '')} onClick={copyShareLink}
+                                    title="Copy a link to this exact view — same filters, selections, and numbers">
+                                    {copied ? '✓ Link copied' : '🔗 Share view'}
+                                </button>
                                 <div className="help-icon" onClick={() => setModal(true)}>?</div>
                             </div>
                         </div>
