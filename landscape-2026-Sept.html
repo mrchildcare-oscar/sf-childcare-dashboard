@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SF Child Care Dashboard</title>
+    <title>SF Child Care Dashboard — September 2026</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -389,42 +389,6 @@
     </style>
 </head>
 <body>
-    <!-- Dated disclosure added 2026-09-08. Plain DOM, deliberately outside the React root so it
-         renders even if the app fails, and cannot be lost in a re-render. -->
-    <div style="background:#FFF4E5;border-bottom:3px solid #B45309;padding:14px 18px;
-                font:14px/1.55 system-ui,-apple-system,'Segoe UI',sans-serif;color:#4A3208">
-      <div style="max-width:1100px;margin:0 auto">
-        <strong style="display:block;font-size:15px;margin-bottom:6px;color:#7C2D12">
-          Known problems with this dashboard &mdash; read before using these figures
-        </strong>
-        <p style="margin:0 0 8px">
-          Built with data from <strong>March&ndash;June 2026</strong>; supervisor districts reflect
-          December 2024. Three defects are known and not yet corrected here:
-        </p>
-        <ul style="margin:0 0 8px;padding-left:20px">
-          <li><strong>Households with children under six are overstated by about 2.42&times;.</strong>
-            The ACS sub-category fields are percentages and were used as counts. Every
-            supply-against-demand comparison on this page inherits the error, so the shortfalls
-            shown are too large.</li>
-          <li><strong>The Head Start / state preschool overlap is an artefact.</strong> Programme
-            tags were assigned by matching agency names, and the same three agencies match both
-            programmes &mdash; which made one a subset of the other by construction. The
-            &ldquo;46 facilities participate in both&rdquo; figure describes the matching rule, not
-            San Francisco.</li>
-          <li><strong>Only about 40% of small family child care homes are here.</strong> This map
-            plots <strong>224</strong> licensed small homes holding <strong>1,786</strong> slots. A
-            2026 records request to the state established that the city actually has
-            <strong>556</strong> of them, holding <strong>4,322</strong> licensed slots across 25
-            postcodes. The missing 332 homes are not on any public list with an address, so they
-            cannot be mapped &mdash; but they exist, and every count on this page is short by them.</li>
-        </ul>
-        <p style="margin:0">
-          Corrected figures for the first and third points exist in the newer analyses in this
-          repository. This page is kept up because it is linked from elsewhere, not because it is
-          current.
-        </p>
-      </div>
-    </div>
     <div id="root"></div>
 
     <script>
@@ -433,10 +397,425 @@
         const DATA_HOST = (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname.startsWith('192.168.'))
             ? '.'
             : 'https://ece-data-host.vercel.app';
+        // Child care centres, reconciled to CCLD's 6 September 2026 roster.
+        // 383 still licensed, 25 no longer, 7 newly licensed, 9 revived from PENDING = 399.
+        // ⚠ Centre facility numbers live in the facility file as FLOATS ('380500086.0') and in the
+        // roster as plain integers. Joining them raw yields zero matches, which reads as "every
+        // centre closed, 399 opened" - normalise before comparing.
+        const CTR_TYPES = ['DAY CARE CENTER','INFANT CENTER','SINGLE LICENSED CHILD CARE CENTER','SCHOOL AGE DAY CARE CENTER'];
+        const ctrNum = v => { const s = String(v == null ? '' : v).trim();
+            return s.slice(-2) === '.0' ? s.slice(0, -2) : s; };
+        // Centre addresses ARE public, unlike family child care homes, so these carry true
+        // coordinates from the city's Enterprise Addressing System.
+        const CTR_ADDED_6SEP = [
+            {"n":"384005154","name":"GODDARD SCHOOL, THE","type":"SINGLE LICENSED CHILD CARE CENTER","addr":"1700 MONTGOMERY STREET #100","zip":"94111","cap":154,"lat":37.80527223,"lon":-122.40458341,"dist":"3","sup":"Danny Sauter","nh":"North Beach"},
+            {"n":"384005174","name":"MINI MONDE DAYCARE & PRESCHOOL","type":"SINGLE LICENSED CHILD CARE CENTER","addr":"1112 Howard ST","zip":"94103","cap":19,"lat":37.77784833,"lon":-122.40997173,"dist":"6","sup":"Matt Dorsey","nh":"South of Market"},
+            {"n":"384005182","name":"SFUSD-JOHN MCLAREN EARLY EDUCATION SCHOOL","type":"SINGLE LICENSED CHILD CARE CENTER","addr":"2055 SUNNYDALE AVENUE","zip":"94134","cap":90,"lat":37.71378671,"lon":-122.42329444,"dist":"10","sup":"Shamann Walton","nh":"McLaren Park"},
+            {"n":"384005186","name":"SFUSD-MISSION BAY SCHOOL","type":"SINGLE LICENSED CHILD CARE CENTER","addr":"1415 OWENS STREET","zip":"94158","cap":48,"lat":37.76978688,"lon":-122.39553596,"dist":"6","sup":"Matt Dorsey","nh":"Mission Bay"},
+            {"n":"384005194","name":"GAN SHELLY","type":"SINGLE LICENSED CHILD CARE CENTER","addr":"862 28th AVE","zip":"94121","cap":48,"lat":37.77313297,"lon":-122.48712063,"dist":"1","sup":"Connie Chan","nh":"Outer Richmond"},
+            {"n":"384005203","name":"HIBA ACADEMY BAY AREA","type":"SINGLE LICENSED CHILD CARE CENTER","addr":"99 RHODE ISLAND STREET","zip":"94103","cap":144,"lat":37.7689532,"lon":-122.40280752,"dist":"6","sup":"Matt Dorsey","nh":"Mission Bay"},
+            {"n":"384005212","name":"TINY GIANTS TOO","type":"SINGLE LICENSED CHILD CARE CENTER","addr":"2163 Filbert ST","zip":"94123","cap":30,"lat":37.79782183,"lon":-122.43499131,"dist":"2","sup":"Stephen Sherrill","nh":"Marina"}
+        ];
+        const CTR_RETIRED_6SEP = { '380500619':'CLOSED', '380501318':'CLOSED', '380504444':'CLOSED', '384000740':'CLOSED', '384000892':'INACTIVE', '384001093':'CLOSED', '384001138':'CLOSED', '384001634':'CLOSED', '384001884':'CLOSED', '384001885':'CLOSED', '384002301':'CLOSED', '384002352':'CLOSED', '384002389':'CLOSED', '384002514':'CLOSED', '384002539':'INACTIVE', '384002677':'CLOSED', '384002729':'CLOSED', '384004006':'CLOSED', '384004114':'CLOSED', '384004115':'CLOSED', '384004134':'CLOSED', '384004296':'CLOSED', '384004791':'CLOSED', '384004823':'CLOSED', '384004857':'CLOSED' };
+        const CTR_REVIVED_6SEP = ['384004953', '384005087', '384005100', '384005104', '384005118', '384005122', '384005123', '384005126', '384005130'];
+        const CTR_CAP_6SEP = {'380500086':116,'380500099':75,'380500240':25,'380500254':24,'380500308':150,'380500371':75,'380500487':35,'380500491':80,'380500512':125,'380500581':90,'380503028':100,'380503900':42,'380503970':60,'380504038':30,'380504052':49,'380504057':20,'380504229':38,'380504276':16,'380504311':44,'380504314':65,'380504340':60,'380504354':60,'380504369':70,'380504378':69,'380504384':60,'380504386':43,'380504389':48,'380504406':102,'380504419':56,'380504442':136,'380504523':36,'380504560':67,'380504578':200,'380504700':59,'380504714':70,'380504742':50,'380504776':91,'380504783':59,'380504793':87,'380504889':70,'380504941':40,'380504942':60,'380504984':15,'380505035':60,'380505039':29,'380505208':27,'380505210':120,'380505246':60,'380505307':168,'380505313':22,'380505320':42,'380505334':112,'380505426':42,'380505428':148,'380505461':111,'380505466':378,'380505534':95,'380505563':20,'380505568':83,'380505707':23,'380505725':39,'380505730':48,'380505779':18,'380505833':224,'380505930':34,'380505931':36,'380506088':32,'380506136':66,'380506270':30,'380506275':24,'380506340':53,'380506341':53,'380506367':80,'380506430':38,'380506508':9,'380506510':5,'380506527':35,'384000037':30,'384000060':90,'384000093':104,'384000103':12,'384000104':14,'384000105':10,'384000125':125,'384000176':114,'384000199':72,'384000227':36,'384000255':45,'384000274':18,'384000275':74,'384000303':76,'384000310':72,'384000352':200,'384000375':72,'384000406':96,'384000407':24,'384000493':48,'384000521':22,'384000531':42,'384000539':130,'384000615':63,'384000667':18,'384000731':20,'384000741':20,'384000793':15,'384000804':28,'384000805':16,'384000818':19,'384000832':22,'384000867':23,'384000923':56,'384000944':72,'384000950':110,'384000958':16,'384000981':66,'384000988':45,'384000989':27,'384001017':40,'384001019':30,'384001117':28,'384001195':27,'384001206':24,'384001263':175,'384001291':49,'384001346':22,'384001376':47,'384001393':45,'384001395':22,'384001418':57,'384001456':72,'384001473':26,'384001488':56,'384001489':40,'384001491':72,'384001492':40,'384001536':45,'384001548':30,'384001604':30,'384001625':16,'384001687':30,'384001721':40,'384001789':25,'384001816':75,'384001829':32,'384001831':30,'384001834':32,'384001835':20,'384001838':20,'384001910':30,'384001949':38,'384002011':60,'384002012':21,'384002029':52,'384002040':75,'384002044':20,'384002045':15,'384002056':30,'384002073':100,'384002088':88,'384002096':30,'384002119':38,'384002131':180,'384002154':50,'384002156':80,'384002158':30,'384002199':92,'384002200':90,'384002201':71,'384002202':18,'384002203':40,'384002204':23,'384002235':75,'384002237':24,'384002238':16,'384002239':20,'384002240':16,'384002241':40,'384002242':88,'384002252':27,'384002282':22,'384002286':18,'384002291':53,'384002299':45,'384002300':36,'384002303':30,'384002312':39,'384002319':31,'384002350':93,'384002419':46,'384002433':32,'384002434':32,'384002445':30,'384002448':40,'384002449':36,'384002454':73,'384002455':28,'384002469':32,'384002479':49,'384002496':30,'384002504':170,'384002513':45,'384002529':46,'384002530':22,'384002531':30,'384002543':104,'384002582':72,'384002584':52,'384002593':70,'384002595':64,'384002631':58,'384002632':12,'384002637':48,'384002638':18,'384002663':14,'384002679':28,'384002696':20,'384002718':55,'384002724':24,'384002725':22,'384002726':20,'384002727':38,'384002728':45,'384002754':30,'384002760':200,'384002781':36,'384002794':84,'384002795':32,'384002844':40,'384002957':24,'384002961':28,'384002962':36,'384002968':23,'384002978':66,'384002982':56,'384002983':21,'384002991':45,'384002992':19,'384003012':30,'384003038':40,'384003047':206,'384003048':90,'384003072':39,'384003076':56,'384003077':16,'384003083':104,'384003090':65,'384003094':61,'384003095':26,'384004001':25,'384004002':28,'384004003':23,'384004009':48,'384004012':50,'384004017':42,'384004021':52,'384004025':30,'384004089':20,'384004102':24,'384004104':22,'384004105':23,'384004110':56,'384004111':20,'384004122':35,'384004137':25,'384004147':74,'384004165':174,'384004171':60,'384004176':110,'384004177':64,'384004192':26,'384004231':96,'384004234':24,'384004235':30,'384004245':36,'384004262':45,'384004267':32,'384004272':29,'384004285':24,'384004290':64,'384004297':39,'384004299':24,'384004300':72,'384004308':44,'384004334':52,'384004339':96,'384004340':52,'384004341':9,'384004387':58,'384004392':22,'384004393':20,'384004402':20,'384004403':25,'384004405':96,'384004406':6,'384004409':24,'384004423':32,'384004434':32,'384004439':31,'384004440':30,'384004442':30,'384004449':36,'384004450':21,'384004459':12,'384004460':38,'384004471':42,'384004477':50,'384004486':12,'384004491':66,'384004495':53,'384004498':30,'384004505':18,'384004506':24,'384004510':8,'384004521':20,'384004525':32,'384004534':24,'384004541':24,'384004574':24,'384004581':40,'384004582':24,'384004587':120,'384004588':64,'384004598':48,'384004601':144,'384004603':45,'384004605':49,'384004609':22,'384004643':54,'384004644':16,'384004665':15,'384004667':18,'384004668':18,'384004684':150,'384004702':75,'384004714':8,'384004743':40,'384004744':22,'384004747':49,'384004764':40,'384004774':53,'384004775':30,'384004795':52,'384004798':54,'384004802':16,'384004810':45,'384004811':30,'384004824':84,'384004834':26,'384004835':34,'384004837':240,'384004853':8,'384004854':36,'384004855':50,'384004869':92,'384004873':30,'384004878':120,'384004883':44,'384004886':31,'384004891':45,'384004894':23,'384004895':19,'384004900':76,'384004903':32,'384004915':39,'384004930':21,'384004934':26,'384004940':56,'384004947':59,'384004950':75,'384004953':60,'384004958':78,'384004961':37,'384004969':53,'384004972':71,'384004978':88,'384004979':117,'384004986':22,'384005005':28,'384005014':88,'384005032':94,'384005036':24,'384005039':27,'384005050':32,'384005087':20,'384005100':57,'384005104':41,'384005118':30,'384005122':45,'384005123':24,'384005126':36,'384005130':60,'384005131':114,'384005154':154,'384005174':19,'384005182':90,'384005186':48,'384005194':48,'384005203':144,'384005212':30};
+
+        function applyCentreDelta(rows) {
+            let retired = 0, revived = 0, recap = 0;
+            rows.forEach(f => {
+                if (CTR_TYPES.indexOf(f.facility_type) === -1) return;
+                const n = ctrNum(f.facility_number);
+                if (f.facility_status === 'LICENSED' && CTR_RETIRED_6SEP[n]) {
+                    f.facility_status = CTR_RETIRED_6SEP[n];
+                    f.tags = Object.assign({}, f.tags, { status_corrected_6sep2026: true });
+                    retired++;
+                } else if (f.facility_status !== 'LICENSED' && CTR_REVIVED_6SEP.indexOf(n) !== -1) {
+                    f.facility_status = 'LICENSED';
+                    f.tags = Object.assign({}, f.tags, { relicensed_6sep2026: true });
+                    revived++;
+                }
+                if (f.facility_status === 'LICENSED' && CTR_CAP_6SEP[n] != null
+                    && f.facility_capacity !== CTR_CAP_6SEP[n]) {
+                    f.facility_capacity = CTR_CAP_6SEP[n];
+                    recap++;
+                }
+            });
+            let added = 0;
+            CTR_ADDED_6SEP.forEach(c => {
+                if (c.lat == null) return;              // never place a centre we could not geocode
+                rows.push({
+                    facility_name: c.name, facility_number: c.n,
+                    facility_type: c.type, facility_status: 'LICENSED',
+                    facility_address: c.addr, facility_zip: Number(c.zip),
+                    facility_capacity: c.cap,
+                    latitude: c.lat, longitude: c.lon,
+                    supervisor_district: c.dist || null, supervisor_name: c.sup || null,
+                    neighborhood: c.nh || null,
+                    match_type: 'exact',
+                    tags: { address_source: 'sf_eas_geocode', ccld_6sep2026: true }
+                });
+                added++;
+            });
+            console.log('Centres 6 Sep roster: +' + added + ' opened, ' + retired + ' retired, '
+                + revived + ' relicensed, ' + recap + ' capacities aligned');
+            return rows;
+        }
+
+        // Large family child care, reconciled to CCLD's 30 August 2026 roster and re-checked
+        // against the 6 September 2026 download: identical for San Francisco - 296 licensed,
+        // 4,084 slots, no additions and no removals between the two dates.
+        // The hosted facility file is 7 May 2026. Between the two dates 24 homes opened and 20
+        // closed or went inactive - 44 changes in under four months.
+        // Their addresses read "Unavailable": CCLD suppresses family child care home addresses in
+        // the public download, large homes as well as small. So the new ones are placed at
+        // postcode level, which is what the file already does for 227 of its 373 large homes.
+        const LARGE_FCC_ADDED_30AUG = [
+            {n:'384002142',name:"BAISMAN, LISA A.",zip:'94109',cap:14},
+            {n:'384004244',name:"OCON, TIFFANY S.",zip:'94112',cap:14},
+            {n:'384004338',name:"CHULUUN,SARAN",zip:'94118',cap:14},
+            {n:'384004737',name:"CHEN, YE",zip:'94127',cap:14},
+            {n:'384004756',name:"SOLIS SAZO, ANDREA M.",zip:'94134',cap:12},
+            {n:'384004929',name:"SHAGDARGUNTEV, ENKHCHIMEG",zip:'94132',cap:12},
+            {n:'384004931',name:"NERGUI, AMARJARGAL",zip:'94118',cap:14},
+            {n:'384004949',name:"CHULUUN, JIMSEE",zip:'94121',cap:12},
+            {n:'384004962',name:"ZHENG, WEI WANG",zip:'94158',cap:14},
+            {n:'384004963',name:"FUENTES PAREDES, KIMBERLY",zip:'94131',cap:12},
+            {n:'384004990',name:"NG, OI MING",zip:'94109',cap:14},
+            {n:'384005018',name:"VANDAN, ERDENEBAYAR",zip:'94122',cap:14},
+            {n:'384005040',name:"DEMURA, YELYZAVETA",zip:'94117',cap:14},
+            {n:'384005058',name:"YU, MINNA",zip:'94112',cap:14},
+            {n:'384005110',name:"CUI, JOIE YI KI",zip:'94118',cap:14},
+            {n:'384005153',name:"PUENTES, NATALIE",zip:'94115',cap:12},
+            {n:'384005192',name:"HERNANDEZ, DIANA",zip:'94112',cap:14},
+            {n:'384005193',name:"LI, SHUNA",zip:'94158',cap:14},
+            {n:'384005202',name:"ZHU, LISA",zip:'94134',cap:14},
+            {n:'384005214',name:"RESENDIZ, ARIANA",zip:'94131',cap:12},
+            {n:'384005226',name:"BANOS, KAREN",zip:'94134',cap:14},
+            {n:'384005240',name:"HERNANDEZ, ANA",zip:'94124',cap:14},
+            {n:'384005241',name:"ZHEN, JIANCI",zip:'94112',cap:14},
+            {n:'384005252',name:"CHAVEZ ARANDA, HERNAN",zip:'94134',cap:14}
+        ];
+        // Mapped as LICENSED on 7 May, but not licensed on 30 August. Corrected to their real
+        // status rather than deleted - a home that closed is worth seeing.
+        const LARGE_FCC_RETIRED_30AUG = { '380505406':'CLOSED', '380505746':'INACTIVE', '384000277':'CLOSED', '384000527':'CLOSED', '384000959':'CLOSED', '384001158':'CLOSED', '384001243':'CLOSED', '384001641':'INACTIVE', '384001977':'CLOSED', '384002639':'CLOSED', '384004103':'CLOSED', '384004216':'INACTIVE', '384004254':'CLOSED', '384004382':'CLOSED', '384004545':'CLOSED', '384004617':'CLOSED', '384004621':'CLOSED', '384004713':'CLOSED', '384004739':'CLOSED', '384005031':'CLOSED' };
+
+        // Upgraded from a small to a large licence since the map file was built. CCLD's
+        // 30 August roster lists all six as licensed large homes at capacity 14; the map still has
+        // them as small homes at capacity 8. Reclassified BEFORE the small-home gap is worked out,
+        // otherwise they are counted twice - once here and again inside the records request's 556,
+        // which already excludes them.
+        const RELICENSED_SMALL_TO_LARGE_30AUG = {
+            '384005049': 14, '384004876': 14, '384004687': 14,
+            '384003006': 14, '384004602': 14, '384004683': 14
+        };
+
+        // Licensed on the 30 August roster but sitting in the map as INACTIVE or PENDING.
+        // They came back; the map never noticed.
+        const LARGE_FCC_REVIVED_30AUG = ['384002370', '384005132'];
+
+        // Licensed capacity per the 30 August roster. CCLD is the authority on what a licence
+        // permits, so licensed large homes take their capacity from here rather than from the
+        // four-month-old copy in the facility file. Sums to 4,084 across 296 homes.
+        const LARGE_FCC_CAP_30AUG = {'380503937':12,'380504126':12,'380504493':12,'380505442':12,'380505839':12,'380506144':12,'380506296':12,'380506419':14,'380506504':14,'384000052':12,'384000096':14,'384000113':14,'384000146':14,'384000219':12,'384000223':14,'384000235':14,'384000267':14,'384000468':14,'384000476':14,'384000529':14,'384000532':14,'384000536':14,'384000561':14,'384000668':14,'384000729':14,'384000735':14,'384000794':14,'384000808':14,'384000812':14,'384000813':14,'384000854':14,'384000908':14,'384000941':14,'384000990':14,'384001053':14,'384001060':14,'384001082':14,'384001123':14,'384001170':14,'384001171':14,'384001177':14,'384001201':14,'384001202':14,'384001285':14,'384001308':14,'384001337':14,'384001352':14,'384001364':14,'384001466':14,'384001543':14,'384001547':14,'384001557':14,'384001602':14,'384001605':14,'384001615':14,'384001630':14,'384001657':14,'384001664':14,'384001682':14,'384001686':14,'384001701':14,'384001750':14,'384001751':14,'384001758':14,'384001777':14,'384001783':14,'384001824':14,'384001921':14,'384001948':14,'384001992':14,'384001999':14,'384002024':14,'384002032':14,'384002048':14,'384002142':14,'384002146':14,'384002205':14,'384002222':14,'384002251':14,'384002281':14,'384002309':14,'384002310':14,'384002339':14,'384002347':14,'384002354':14,'384002365':14,'384002370':14,'384002397':14,'384002423':14,'384002432':14,'384002482':14,'384002486':14,'384002487':14,'384002533':14,'384002537':14,'384002590':14,'384002596':14,'384002600':14,'384002601':14,'384002608':14,'384002616':14,'384002624':14,'384002633':14,'384002634':14,'384002641':14,'384002665':14,'384002668':14,'384002676':14,'384002685':14,'384002713':14,'384002721':14,'384002755':14,'384002759':14,'384002773':14,'384002790':14,'384002792':14,'384002816':14,'384002817':14,'384002822':14,'384002827':14,'384002833':14,'384002969':14,'384002976':14,'384002980':14,'384002986':14,'384002995':14,'384002996':14,'384003006':14,'384003034':14,'384003053':14,'384003054':14,'384003070':14,'384003074':14,'384003092':14,'384004000':14,'384004015':14,'384004022':14,'384004032':12,'384004033':14,'384004036':14,'384004049':14,'384004056':14,'384004061':14,'384004086':14,'384004090':14,'384004099':14,'384004108':14,'384004118':14,'384004120':14,'384004121':14,'384004125':14,'384004136':14,'384004141':14,'384004142':14,'384004143':14,'384004156':14,'384004160':12,'384004182':14,'384004193':14,'384004213':14,'384004214':14,'384004225':14,'384004227':14,'384004241':14,'384004244':14,'384004246':14,'384004253':14,'384004257':14,'384004260':14,'384004270':14,'384004275':14,'384004277':14,'384004278':14,'384004286':14,'384004293':14,'384004301':14,'384004307':14,'384004309':14,'384004316':14,'384004326':14,'384004332':14,'384004338':14,'384004346':14,'384004347':14,'384004349':14,'384004356':12,'384004370':14,'384004372':14,'384004375':14,'384004378':14,'384004407':14,'384004419':14,'384004430':14,'384004457':14,'384004467':12,'384004473':14,'384004476':14,'384004483':14,'384004500':14,'384004511':14,'384004524':14,'384004537':14,'384004546':14,'384004553':14,'384004555':14,'384004558':14,'384004602':14,'384004607':14,'384004611':14,'384004615':12,'384004630':14,'384004650':14,'384004656':14,'384004662':14,'384004670':14,'384004671':14,'384004672':14,'384004673':14,'384004680':14,'384004682':14,'384004683':14,'384004686':14,'384004687':14,'384004692':14,'384004696':14,'384004699':12,'384004701':14,'384004722':14,'384004723':14,'384004726':14,'384004728':14,'384004737':14,'384004738':12,'384004742':14,'384004749':14,'384004755':14,'384004756':12,'384004759':14,'384004765':14,'384004766':14,'384004780':14,'384004784':14,'384004785':14,'384004799':14,'384004808':14,'384004822':14,'384004829':14,'384004833':14,'384004836':14,'384004851':14,'384004864':14,'384004865':12,'384004876':14,'384004880':14,'384004889':14,'384004897':12,'384004902':14,'384004906':14,'384004907':12,'384004920':12,'384004929':12,'384004931':14,'384004933':14,'384004936':12,'384004949':12,'384004952':14,'384004955':14,'384004962':14,'384004963':12,'384004968':12,'384004973':14,'384004981':14,'384004990':14,'384004999':12,'384005018':14,'384005024':14,'384005040':14,'384005049':14,'384005058':14,'384005078':14,'384005110':14,'384005121':14,'384005132':14,'384005137':14,'384005148':14,'384005153':12,'384005162':14,'384005179':12,'384005192':14,'384005193':14,'384005202':14,'384005214':12,'384005226':14,'384005240':14,'384005241':14,'384005252':14};
+
+        function applyLargeFccDelta(rows) {
+            let retired = 0, upgraded = 0;
+            rows.forEach(f => {
+                const n = String(f.facility_number || '').trim();
+                if (f.facility_type === 'SMALL FAMILY CHILD CARE HOME'
+                    && RELICENSED_SMALL_TO_LARGE_30AUG[n]) {
+                    f.facility_type = 'LARGE FAMILY CHILD CARE HOME';
+                    f.facility_capacity = RELICENSED_SMALL_TO_LARGE_30AUG[n];
+                    f.tags = Object.assign({}, f.tags, { relicensed_large_30aug2026: true });
+                    upgraded++;
+                }
+            });
+            rows.forEach(f => {
+                const n = String(f.facility_number || '').trim();
+                if (f.facility_type === 'LARGE FAMILY CHILD CARE HOME'
+                    && f.facility_status === 'LICENSED'
+                    && LARGE_FCC_RETIRED_30AUG[n]) {
+                    f.facility_status = LARGE_FCC_RETIRED_30AUG[n];
+                    f.tags = Object.assign({}, f.tags, { status_corrected_30aug2026: true });
+                    retired++;
+                }
+            });
+            let revived = 0;
+            rows.forEach(f => {
+                const n = String(f.facility_number || '').trim();
+                if (f.facility_type === 'LARGE FAMILY CHILD CARE HOME'
+                    && f.facility_status !== 'LICENSED'
+                    && LARGE_FCC_REVIVED_30AUG.indexOf(n) !== -1) {
+                    f.facility_status = 'LICENSED';
+                    f.tags = Object.assign({}, f.tags, { relicensed_30aug2026: true });
+                    revived++;
+                }
+            });
+            // licensed capacity from the state roster, not from the stale copy
+            rows.forEach(f => {
+                const n = String(f.facility_number || '').trim();
+                if (f.facility_type === 'LARGE FAMILY CHILD CARE HOME'
+                    && f.facility_status === 'LICENSED'
+                    && LARGE_FCC_CAP_30AUG[n] != null) {
+                    f.facility_capacity = LARGE_FCC_CAP_30AUG[n];
+                }
+            });
+
+            const anchors = {};
+            rows.forEach(f => {
+                const z = String(f.facility_zip || '').slice(0, 5);
+                const t = f.tags || {};
+                if (/^\d{5}$/.test(z) && f.latitude && f.longitude
+                    && t.address_source !== 'zip_code_approximate') {
+                    (anchors[z] = anchors[z] || []).push([f.latitude, f.longitude]);
+                }
+            });
+            const seen = {};
+            let added = 0;
+            LARGE_FCC_ADDED_30AUG.forEach(h => {
+                const pts = anchors[h.zip];
+                if (!pts || !pts.length) return;
+                const cLat = pts.reduce((a, p) => a + p[0], 0) / pts.length;
+                const cLon = pts.reduce((a, p) => a + p[1], 0) / pts.length;
+                const i = (seen[h.zip] = (seen[h.zip] || 0) + 1);
+                const ang = 1.1 + i * 2.399963;                 // golden angle, deterministic
+                const rad = 0.0022 + 0.0016 * ((i % 4) / 3);
+                rows.push({
+                    facility_name: h.name,
+                    facility_number: h.n,
+                    facility_type: 'LARGE FAMILY CHILD CARE HOME',
+                    facility_status: 'LICENSED',
+                    facility_address: null,
+                    facility_zip: Number(h.zip),
+                    facility_capacity: LARGE_FCC_CAP_30AUG[h.n] != null ? LARGE_FCC_CAP_30AUG[h.n] : h.cap,
+                    latitude: cLat + rad * Math.cos(ang),
+                    longitude: cLon + rad * Math.sin(ang) / Math.cos(cLat * Math.PI / 180),
+                    tags: {
+                        address_source: 'zip_code_approximate',
+                        coordinates_jittered: true,
+                        geocoding_method: 'zip_activity_centroid_with_jitter',
+                        ccld_30aug2026: true
+                    }
+                });
+                added++;
+            });
+            console.log('Large FCC 30 Aug roster: +' + added + ' opened, ' + retired
+                + ' retired, ' + upgraded + ' upgraded from a small licence, '
+                + revived + ' relicensed');
+            return rows;
+        }
+
+        // Small family child care homes operate in private residences. The facility file names
+        // most of them as individuals and gives many rooftop coordinates - a name at an exact point
+        // is a home address. Health & Safety Code 1596.86 keeps small-home addresses out of
+        // published lists, and the 2026 records request asked for none of it, which is why it was
+        // granted in full. So every small home here is shown the same way as the homes that request
+        // returned: unnamed, no licence number, no street address, postcode-level position.
+        // The map still shows how many homes each postcode holds. That is all it could honestly say.
+        function protectSmallHomes(rows) {
+            const anchors = {};
+            rows.forEach(f => {
+                const z = String(f.facility_zip || '').slice(0, 5);
+                const t = f.tags || {};
+                if (/^\d{5}$/.test(z) && f.latitude && f.longitude
+                    && f.facility_type !== 'SMALL FAMILY CHILD CARE HOME'
+                    && t.address_source !== 'zip_code_approximate') {
+                    (anchors[z] = anchors[z] || []).push([f.latitude, f.longitude]);
+                }
+            });
+            const seen = {};
+            let masked = 0, moved = 0;
+            rows.forEach(f => {
+                if (f.facility_type !== 'SMALL FAMILY CHILD CARE HOME') return;
+                f.facility_name = 'Licensed small family child care home';
+                f.facility_number = 'not disclosed';
+                f.facility_address = null;
+                delete f.matched_eas_address;
+                delete f.parcel_number;
+                delete f.eas_baseid;
+                masked++;
+                let z = String(f.facility_zip || '').slice(0, 5);
+                // No postcode on the record: use its own coordinates to pick the nearest postcode
+                // anchor, then publish only that postcode's position and discard the exact point.
+                if (!/^\d{5}$/.test(z) && f.latitude && f.longitude) {
+                    let best = null, bestD = Infinity;
+                    Object.keys(anchors).forEach(k => {
+                        const p = anchors[k];
+                        const la = p.reduce((a, q) => a + q[0], 0) / p.length;
+                        const lo = p.reduce((a, q) => a + q[1], 0) / p.length;
+                        const dd = (la - f.latitude) * (la - f.latitude)
+                                 + (lo - f.longitude) * (lo - f.longitude);
+                        if (dd < bestD) { bestD = dd; best = k; }
+                    });
+                    if (best) { z = best; f.facility_zip = Number(best); f.tags = Object.assign({}, f.tags, { zip_inferred: true }); }
+                }
+                const pts = anchors[z];
+                if (!/^\d{5}$/.test(z) || !pts || !pts.length) {
+                    // nothing to place it against - withhold the point rather than publish it
+                    f.latitude = null; f.longitude = null;
+                    return;
+                }
+                const cLat = pts.reduce((a, p) => a + p[0], 0) / pts.length;
+                const cLon = pts.reduce((a, p) => a + p[1], 0) / pts.length;
+                const i = (seen[z] = (seen[z] || 0) + 1);
+                const ang = 0.6 + i * 2.399963;              // golden angle, deterministic
+                const rad = 0.0030 + 0.0022 * ((i % 5) / 4);
+                f.latitude = cLat + rad * Math.cos(ang);
+                f.longitude = cLon + rad * Math.sin(ang) / Math.cos(cLat * Math.PI / 180);
+                f.tags = Object.assign({}, f.tags, {
+                    address_source: 'zip_code_approximate',
+                    coordinates_jittered: true,
+                    geocoding_method: 'zip_activity_centroid_with_jitter',
+                    identity_withheld: true
+                });
+                moved++;
+            });
+            console.log('Small homes protected: ' + masked + ' unnamed, ' + moved
+                + ' moved to postcode level');
+            return rows;
+        }
+
+        // Licensed SMALL family child care homes by postcode - the count of what EXISTS.
+        // Source: CDSS, released to FCCASF under a 2026 public records request. 556 homes,
+        // 4,322 licensed slots, 25 postcodes, nothing redacted.
+        const TOTAL_SMALL_HOMES = 556, TOTAL_SMALL_SLOTS = 4322;
+        const SMALL_FCC_PRA = {
+            '94102':[13,102],
+            '94103':[32,242],
+            '94105':[8,58],
+            '94107':[14,112],
+            '94108':[3,24],
+            '94109':[6,46],
+            '94110':[64,498],
+            '94111':[2,16],
+            '94112':[133,1024],
+            '94114':[6,48],
+            '94115':[7,52],
+            '94116':[29,228],
+            '94117':[7,56],
+            '94118':[17,130],
+            '94121':[23,176],
+            '94122':[37,288],
+            '94123':[6,44],
+            '94124':[53,420],
+            '94127':[5,40],
+            '94130':[1,8],
+            '94131':[10,80],
+            '94132':[16,122],
+            '94133':[14,108],
+            '94134':[40,320],
+            '94158':[10,80]
+        };
+
+        // The records request returned postcode, capacity and status. It did NOT return names,
+        // addresses or licence numbers - that omission is why CDSS produced it in fifteen days
+        // with nothing withheld. So there is no address to geocode for the homes the public lists
+        // miss, and they are placed exactly the way this dashboard already places 349 other
+        // address-less facilities: at the postcode's centre of real-address activity, with jitter,
+        // carrying address_source 'zip_code_approximate' so they inherit the orange
+        // approximate-location ring. Positions are deterministic, not random, so the map is stable
+        // across reloads. A dot is a home that exists; where it sits inside its postcode is not
+        // information.
+        function addRecordsRequestSmallHomes(rows) {
+            const anchors = {}, have = {}, haveCap = {};
+            let noZipSmall = 0, noZipSmallCap = 0;
+            rows.forEach(f => {
+                const z = String(f.facility_zip || '').slice(0, 5);
+                if (!/^\d{5}$/.test(z)) {
+                    // counted citywide, attributable to no postcode
+                    if (f.facility_type === 'SMALL FAMILY CHILD CARE HOME'
+                        && f.facility_status === 'LICENSED') {
+                        noZipSmall++; noZipSmallCap += (f.facility_capacity || 0);
+                    }
+                    return;
+                }
+                const t = f.tags || {};
+                if (f.latitude && f.longitude && t.address_source !== 'zip_code_approximate') {
+                    (anchors[z] = anchors[z] || []).push([f.latitude, f.longitude]);
+                }
+                if (f.facility_type === 'SMALL FAMILY CHILD CARE HOME' && f.facility_status === 'LICENSED') {
+                    have[z] = (have[z] || 0) + 1;
+                    haveCap[z] = (haveCap[z] || 0) + (f.facility_capacity || 0);
+                }
+            });
+            // Citywide, the records request is authoritative: 556 homes. The per-postcode
+            // shortfalls do not sum to the citywide shortfall, for two reasons that are properties
+            // of the data, not arithmetic slips: 16 mapped homes carry no postcode and so cannot be
+            // deducted anywhere, and 94108 maps more homes than the state says exist. So pin the
+            // total and apportion it across postcodes in proportion to their apparent shortfall,
+            // using largest-remainder so the parts sum exactly to the whole.
+            const target = TOTAL_SMALL_HOMES - Object.keys(have).reduce((a, z) => a + have[z], 0) - noZipSmall;
+            const raw = {};
+            let rawSum = 0;
+            Object.keys(SMALL_FCC_PRA).forEach(z => {
+                const gap = SMALL_FCC_PRA[z][0] - (have[z] || 0);
+                if (gap > 0 && (anchors[z] || []).length) { raw[z] = gap; rawSum += gap; }
+            });
+            const alloc = {};
+            let placed = 0;
+            const rema = [];
+            Object.keys(raw).forEach(z => {
+                const exact = raw[z] * target / rawSum;
+                alloc[z] = Math.floor(exact);
+                placed += alloc[z];
+                rema.push([z, exact - alloc[z]]);
+            });
+            rema.sort((a, b) => b[1] - a[1]);
+            for (let k = 0; placed < target && k < rema.length; k++, placed++) alloc[rema[k][0]]++;
+
+            // Slots, pinned the same way as the counts. The remaining licensed capacity is
+            // whatever the records request total leaves after the homes already mapped, split
+            // evenly across the placed homes with the remainder handed out one slot at a time.
+            const mappedCapAll = Object.keys(haveCap).reduce((a, z) => a + haveCap[z], 0) + noZipSmallCap;
+            const capTarget = Math.max(0, TOTAL_SMALL_SLOTS - mappedCapAll);
+            const capBase = target > 0 ? Math.floor(capTarget / target) : 8;
+            let capRemainder = capTarget - capBase * target;
+
+            const out = rows.slice();
+            let added = 0;
+            Object.keys(alloc).forEach(z => {
+                const gap = alloc[z];
+                if (gap <= 0) return;
+                const pts = anchors[z];
+                const cLat = pts.reduce((a, p) => a + p[0], 0) / pts.length;
+                const cLon = pts.reduce((a, p) => a + p[1], 0) / pts.length;
+                const lonScale = 1 / Math.cos(cLat * Math.PI / 180);
+                for (let i = 0; i < gap; i++) {
+                    const ang = (2 * Math.PI * i) / gap;
+                    const rad = 0.0035 + 0.0028 * ((i % 3) / 2);
+                    out.push({
+                        facility_name: 'Licensed small family child care home',
+                        facility_number: 'not disclosed',
+                        facility_type: 'SMALL FAMILY CHILD CARE HOME',
+                        facility_status: 'LICENSED',
+                        facility_address: null,
+                        facility_zip: Number(z),
+                        facility_capacity: capBase + (capRemainder-- > 0 ? 1 : 0),
+                        latitude: cLat + rad * Math.cos(ang),
+                        longitude: cLon + rad * Math.sin(ang) * lonScale,
+                        tags: {
+                            address_source: 'zip_code_approximate',
+                            coordinates_jittered: true,
+                            geocoding_method: 'zip_activity_centroid_with_jitter',
+                            records_request_2026: true
+                        }
+                    });
+                    added++;
+                }
+            });
+            console.log('Records request: placed ' + added + ' of ' + TOTAL_SMALL_HOMES
+                + ' small homes at postcode level; ' + noZipSmall + ' mapped homes have no postcode');
+            return out;
+        }
+
         window.CHILDCARE_DATA = null;
         fetch(DATA_HOST + '/childcare_all_coordinates.json')
             .then(r => r.json())
             .then(d => {
+                d = applyCentreDelta(d);
+                d = applyLargeFccDelta(d);
+                d = protectSmallHomes(d);
+                d = addRecordsRequestSmallHomes(d);
                 window.CHILDCARE_DATA = d;
                 const withCoords = d.filter(f => f.latitude && f.longitude).length;
                 const jittered = d.filter(f => f.tags?.address_source === 'zip_code_approximate').length;
@@ -724,33 +1103,34 @@
         }
 
         const ZIP_DEMAND_DATA = [
-            { zip: '94102', total_hh: 1351, le110: 973, b110_150: 119, b150_200: 74, gt200: 186, under3: 605, age3_4: 44, age5: 85 },
-            { zip: '94103', total_hh: 1686, le110: 914, b110_150: 182, b150_200: 135, gt200: 456, under3: 571, age3_4: 301, age5: 55 },
-            { zip: '94104', total_hh: 11, le110: 7, b110_150: 1, b150_200: 1, gt200: 2, under3: 0, age3_4: 0, age5: 0 },
-            { zip: '94105', total_hh: 491, le110: 149, b110_150: 51, b150_200: 58, gt200: 233, under3: 275, age3_4: 110, age5: 62 },
-            { zip: '94107', total_hh: 2136, le110: 837, b110_150: 210, b150_200: 224, gt200: 865, under3: 1126, age3_4: 528, age5: 242 },
-            { zip: '94108', total_hh: 574, le110: 399, b110_150: 45, b150_200: 36, gt200: 94, under3: 185, age3_4: 78, age5: 9 },
-            { zip: '94109', total_hh: 1945, le110: 1078, b110_150: 212, b150_200: 171, gt200: 483, under3: 692, age3_4: 520, age5: 163 },
-            { zip: '94110', total_hh: 5503, le110: 2415, b110_150: 627, b150_200: 584, gt200: 1877, under3: 1971, age3_4: 1099, age5: 515 },
-            { zip: '94111', total_hh: 374, le110: 174, b110_150: 31, b150_200: 36, gt200: 133, under3: 52, age3_4: 45, age5: 64 },
-            { zip: '94112', total_hh: 6264, le110: 3287, b110_150: 780, b150_200: 614, gt200: 1583, under3: 2548, age3_4: 1183, age5: 940 },
-            { zip: '94114', total_hh: 2303, le110: 804, b110_150: 232, b150_200: 258, gt200: 1010, under3: 886, age3_4: 363, age5: 155 },
-            { zip: '94115', total_hh: 1794, le110: 824, b110_150: 177, b150_200: 184, gt200: 609, under3: 817, age3_4: 439, age5: 190 },
-            { zip: '94116', total_hh: 3874, le110: 1707, b110_150: 553, b150_200: 424, gt200: 1190, under3: 1158, age3_4: 856, age5: 529 },
-            { zip: '94117', total_hh: 2020, le110: 801, b110_150: 230, b150_200: 200, gt200: 789, under3: 933, age3_4: 585, age5: 251 },
-            { zip: '94118', total_hh: 3255, le110: 1371, b110_150: 388, b150_200: 356, gt200: 1140, under3: 925, age3_4: 756, age5: 159 },
-            { zip: '94121', total_hh: 3630, le110: 1828, b110_150: 441, b150_200: 354, gt200: 1007, under3: 1144, age3_4: 557, age5: 274 },
-            { zip: '94122', total_hh: 4408, le110: 2118, b110_150: 521, b150_200: 448, gt200: 1322, under3: 1407, age3_4: 726, age5: 413 },
-            { zip: '94123', total_hh: 1735, le110: 494, b110_150: 197, b150_200: 222, gt200: 821, under3: 968, age3_4: 633, age5: 151 },
-            { zip: '94124', total_hh: 3749, le110: 2507, b110_150: 337, b150_200: 254, gt200: 652, under3: 1058, age3_4: 653, age5: 317 },
-            { zip: '94127', total_hh: 2203, le110: 783, b110_150: 194, b150_200: 261, gt200: 965, under3: 728, age3_4: 339, age5: 108 },
-            { zip: '94129', total_hh: 528, le110: 149, b110_150: 69, b150_200: 70, gt200: 240, under3: 313, age3_4: 140, age5: 67 },
-            { zip: '94130', total_hh: 136, le110: 85, b110_150: 9, b150_200: 10, gt200: 32, under3: 28, age3_4: 58, age5: 20 },
-            { zip: '94131', total_hh: 2575, le110: 939, b110_150: 261, b150_200: 300, gt200: 1074, under3: 993, age3_4: 655, age5: 229 },
-            { zip: '94132', total_hh: 1973, le110: 1123, b110_150: 243, b150_200: 180, gt200: 427, under3: 482, age3_4: 166, age5: 143 },
-            { zip: '94133', total_hh: 1229, le110: 767, b110_150: 110, b150_200: 85, gt200: 267, under3: 302, age3_4: 392, age5: 45 },
-            { zip: '94134', total_hh: 2977, le110: 1746, b110_150: 383, b150_200: 246, gt200: 602, under3: 1015, age3_4: 528, age5: 381 },
-            { zip: '94158', total_hh: 986, le110: 367, b110_150: 101, b150_200: 106, gt200: 412, under3: 581, age3_4: 626, age5: 40 }
+            { zip: '94102', total_hh: 449, le110: 322, b110_150: 40, b150_200: 25, gt200: 62, under3: 605, age3_4: 44, age5: 85 },
+            { zip: '94103', total_hh: 686, le110: 371, b110_150: 74, b150_200: 55, gt200: 186, under3: 571, age3_4: 301, age5: 55 },
+            { zip: '94104', total_hh: 0, le110: 0, b110_150: 0, b150_200: 0, gt200: 0, under3: 0, age3_4: 0, age5: 0 },
+            { zip: '94105', total_hh: 350, le110: 106, b110_150: 36, b150_200: 41, gt200: 167, under3: 275, age3_4: 110, age5: 62 },
+            { zip: '94107', total_hh: 1301, le110: 510, b110_150: 128, b150_200: 136, gt200: 527, under3: 1126, age3_4: 528, age5: 242 },
+            { zip: '94108', total_hh: 187, le110: 129, b110_150: 15, b150_200: 12, gt200: 31, under3: 185, age3_4: 78, age5: 9 },
+            { zip: '94109', total_hh: 910, le110: 505, b110_150: 99, b150_200: 80, gt200: 226, under3: 692, age3_4: 520, age5: 163 },
+            { zip: '94110', total_hh: 2273, le110: 998, b110_150: 259, b150_200: 241, gt200: 775, under3: 1971, age3_4: 1099, age5: 515 },
+            { zip: '94111', total_hh: 124, le110: 58, b110_150: 10, b150_200: 12, gt200: 44, under3: 52, age3_4: 45, age5: 64 },
+            { zip: '94112', total_hh: 2399, le110: 1259, b110_150: 299, b150_200: 235, gt200: 606, under3: 2548, age3_4: 1183, age5: 940 },
+            { zip: '94114', total_hh: 1094, le110: 382, b110_150: 110, b150_200: 123, gt200: 479, under3: 886, age3_4: 363, age5: 155 },
+            { zip: '94115', total_hh: 911, le110: 419, b110_150: 90, b150_200: 93, gt200: 309, under3: 817, age3_4: 439, age5: 190 },
+            { zip: '94116', total_hh: 1480, le110: 652, b110_150: 211, b150_200: 162, gt200: 455, under3: 1158, age3_4: 856, age5: 529 },
+            { zip: '94117', total_hh: 1153, le110: 457, b110_150: 131, b150_200: 114, gt200: 451, under3: 933, age3_4: 585, age5: 251 },
+            { zip: '94118', total_hh: 1374, le110: 579, b110_150: 164, b150_200: 150, gt200: 481, under3: 925, age3_4: 756, age5: 159 },
+            { zip: '94121', total_hh: 1227, le110: 618, b110_150: 149, b150_200: 120, gt200: 340, under3: 1144, age3_4: 557, age5: 274 },
+            { zip: '94122', total_hh: 1781, le110: 856, b110_150: 210, b150_200: 181, gt200: 534, under3: 1407, age3_4: 726, age5: 413 },
+            { zip: '94123', total_hh: 854, le110: 243, b110_150: 97, b150_200: 109, gt200: 405, under3: 968, age3_4: 633, age5: 151 },
+            { zip: '94124', total_hh: 1143, le110: 764, b110_150: 103, b150_200: 77, gt200: 199, under3: 1058, age3_4: 653, age5: 317 },
+            { zip: '94127', total_hh: 908, le110: 323, b110_150: 80, b150_200: 108, gt200: 397, under3: 728, age3_4: 339, age5: 108 },
+            { zip: '94129', total_hh: 290, le110: 82, b110_150: 38, b150_200: 38, gt200: 132, under3: 313, age3_4: 140, age5: 67 },
+            { zip: '94130', total_hh: 49, le110: 30, b110_150: 3, b150_200: 4, gt200: 12, under3: 28, age3_4: 58, age5: 20 },
+            { zip: '94131', total_hh: 1329, le110: 485, b110_150: 135, b150_200: 155, gt200: 554, under3: 993, age3_4: 655, age5: 229 },
+            { zip: '94132', total_hh: 472, le110: 269, b110_150: 58, b150_200: 43, gt200: 102, under3: 482, age3_4: 166, age5: 143 },
+            { zip: '94133', total_hh: 407, le110: 255, b110_150: 36, b150_200: 28, gt200: 88, under3: 302, age3_4: 392, age5: 45 },
+            { zip: '94134', total_hh: 851, le110: 499, b110_150: 110, b150_200: 70, gt200: 172, under3: 1015, age3_4: 528, age5: 381 },
+            { zip: '94143', total_hh: 0, le110: 0, b110_150: 0, b150_200: 0, gt200: 0, under3: 0, age3_4: 0, age5: 0 },
+            { zip: '94158', total_hh: 683, le110: 254, b110_150: 70, b150_200: 73, gt200: 286, under3: 581, age3_4: 626, age5: 40 }
         ];
     </script>
 
@@ -803,6 +1183,8 @@
             const landscapeChartInst = useRef(null);
             const districtMapRef = useRef(null);
             const districtMapInst = useRef(null);
+            const corridorMapRef = useRef(null);
+            const corridorMapInst = useRef(null);
             const [districtGeo, setDistrictGeo] = useState(null);
 
             useEffect(() => {
@@ -948,10 +1330,16 @@
             // Neutral framing — reads supply/demand pressure without "good/bad" valence.
             // Bands: <0.40 tight (high demand pressure), 0.40-0.70 balanced (~SF avg 0.55),
             // >0.70 slack (supply outpaces demand). Anchor: federal "child care desert" = <0.33.
-            const [saturationOn, setSaturationOn] = useState(() => pBool('sat', false));
+            // Pinned OFF 2026-09-08. This lens expressed licensed slots divided by children
+            // under six - a coverage rate over mismatched age bands, the error explainer.html
+            // retracted and served.html bans. The ratio displays are gone; this stops a stray
+            // ?sat=1 link resurrecting the banded labels without the arithmetic behind them.
+            // Machinery left in place (19 call sites: row colour, sort keys, memo deps) - every
+            // consumer guards on saturationOn, so false makes it inert.
+            const [saturationOn, setSaturationOn] = useState(false);
             const [saturationMode, setSaturationMode] = useState(() => pStr('satmode', 'total')); // 'total' | 'elfa'
 
-            // Compute pressure ratio + label/color/emoji for a slots/children pair.
+            // Retained but inert: nothing calls this for display any more.
             // Color uses a neutral teal-intensity gradient (no red/green moral coding).
             const getSaturation = (slots, children) => {
                 if (!children || children <= 0) return { ratio: null, label: 'No data', color: 'unknown', emoji: '⚪' };
@@ -975,7 +1363,6 @@
                     <div>
                         <div className={'saturation-pill sat-' + sat.color}>
                             {sat.emoji} {sat.label}
-                            <span className="sat-pill-ratio">· {sat.ratio.toFixed(2)} {isElfa?'ELFA':''} slots/child</span>
                         </div>
                         <div className="sat-pill-help">
                             <strong>{isElfa ? 'ELFA-contracted slots' : 'Licensed slots'} ÷ children under 6.</strong>{' '}
@@ -1802,6 +2189,18 @@
             }, [data, supplyByDistrict, demandTotals, tab, geoView]);
 
             // ===== District reference map =====
+            // Categorical, deliberately not red/green - a corridor is a grouping, not a verdict.
+            const CORRIDOR_COLORS = {
+                'Westside':      '#5b6abf',
+                'North/Central': '#c98a2b',
+                'South Central': '#2f8f83',
+                'Southeast':     '#9c5a9c'
+            };
+            const DISTRICT_TO_CORRIDOR = Object.entries(CORRIDORS).reduce((m, [name, ds]) => {
+                ds.forEach(d => { m[d] = name; });
+                return m;
+            }, {});
+
             const DISTRICT_COLORS = [
                 '#4285f4', '#ea4335', '#fbbc04', '#34a853', '#ff6d01',
                 '#46bdc6', '#7baaf7', '#f07b72', '#fcd04f', '#57bb8a', '#e8710a'
@@ -2147,6 +2546,70 @@
                 });
             }, [data, supplyByZip, tab, geoView]);
 
+            // Corridor reference map. Same GeoJSON and setup as the district map; districts are
+            // filled by the corridor they belong to, and keep their number so the grouping is
+            // readable without relying on colour.
+            useEffect(() => {
+                if (!districtGeo || !corridorMapRef.current) return;
+                if (corridorMapInst.current) return;
+
+                const m = L.map(corridorMapRef.current, {
+                    zoomControl: true, scrollWheelZoom: false, dragging: true,
+                    minZoom: 11, maxZoom: 14
+                }).setView([37.7600, -122.4400], 12);
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; OpenStreetMap contributors'
+                }).addTo(m);
+
+                L.geoJSON(districtGeo, {
+                    style: feature => {
+                        const c = CORRIDOR_COLORS[DISTRICT_TO_CORRIDOR[parseInt(feature.properties.district)]] || '#999';
+                        return { fillColor: c, fillOpacity: 0.42, color: c, weight: 2.5, opacity: 0.95 };
+                    },
+                    onEachFeature: (feature, layer) => {
+                        const d = parseInt(feature.properties.district);
+                        const cname = DISTRICT_TO_CORRIDOR[d] || 'Unassigned';
+                        const dists = CORRIDORS[cname] || [];
+                        const cap = dists.reduce((a, x) => a + (supplyByDistrict[x]?.totalCap || 0), 0);
+                        const elfa = dists.reduce((a, x) => a + (supplyByDistrict[x]?.elfaCap || 0), 0);
+                        const u6 = DEMAND_DATA.filter(x => dists.includes(x.district))
+                            .reduce((a, x) => a + x.under3 + x.age3_4 + x.age5, 0);
+                        layer.bindPopup(
+                            `<strong>${cname}</strong><br/>` +
+                            `District ${d} &mdash; ${feature.properties.name}<br/>` +
+                            `<em>Corridor covers districts ${dists.join(', ')}</em><br/>` +
+                            `Licensed capacity: ${cap.toLocaleString()}<br/>` +
+                            `ELFA capacity: ${elfa.toLocaleString()}<br/>` +
+                            `Children under 6: ${u6.toLocaleString()}`
+                        );
+                        // label at the largest ring's centroid, so offshore polygons (D4's
+                        // Farallon Islands) cannot drag the number off the map
+                        const coords = feature.geometry.coordinates;
+                        let ring = coords[0][0];
+                        if (coords.length > 1) {
+                            let most = 0;
+                            coords.forEach(poly => {
+                                if (poly[0].length > most) { most = poly[0].length; ring = poly[0]; }
+                            });
+                        }
+                        const lat = ring.reduce((a, p) => a + p[1], 0) / ring.length;
+                        const lng = ring.reduce((a, p) => a + p[0], 0) / ring.length;
+                        L.marker(L.latLng(lat, lng), {
+                            icon: L.divIcon({
+                                className: '',
+                                html: `<div style="font-size:13px;font-weight:800;color:#222;` +
+                                      `text-shadow:1px 1px 2px white,-1px -1px 2px white,1px -1px 2px white,-1px 1px 2px white;">${d}</div>`,
+                                iconSize: [22, 22]
+                            }),
+                            interactive: false
+                        }).addTo(m);
+                    }
+                }).addTo(m);
+
+                corridorMapInst.current = m;
+            }, [districtGeo, supplyByDistrict, tab, geoView]);
+
             // Invalidate map sizes when switching tabs/views
             useEffect(() => {
                 setTimeout(() => {
@@ -2156,6 +2619,10 @@
                     if (tab === 'landscape' && geoView === 'citywide' && districtMapInst.current) {
                         districtMapInst.current.invalidateSize();
                         districtMapInst.current.setView([37.7600, -122.4400], 12);
+                    }
+                    if (tab === 'landscape' && geoView === 'corridor' && corridorMapInst.current) {
+                        corridorMapInst.current.invalidateSize();
+                        corridorMapInst.current.setView([37.7600, -122.4400], 12);
                     }
                 }, 50);
             }, [tab, geoView]);
@@ -2197,8 +2664,8 @@
                 <div className="header">
                         <div className="header-content">
                             <div>
-                                <h1>SF Child Care Dashboard</h1>
-                                <p>Licensed Centers & Large FCCs - All facilities mapped (some with approximate ZIP-based locations)</p>
+                                <h1>SF Child Care Dashboard <span style={{fontSize:'0.5em',fontWeight:400,opacity:0.75}}>September 2026</span></h1>
+                                <p>All licensed centres and family child care homes, including the full small-home sector. Built 8 September 2026. Homes with no public address are placed at postcode level and ringed in orange.</p>
                             </div>
                             <div className="header-stats">
                                 {tab === 'programs' ? <>
@@ -2209,7 +2676,6 @@
                                 </> : <>
                                     <div className="stat-pill"><div className="stat-value">{supplyByDistrict.total?.totalCap?.toLocaleString() || '...'}</div><div className="stat-label">Licensed Slots</div></div>
                                     <div className="stat-pill"><div className="stat-value">{supplyByDistrict.total?.elfaCap?.toLocaleString() || '...'}</div><div className="stat-label">ELFA Slots</div></div>
-                                    <div className="stat-pill"><div className="stat-value">{supplyByDistrict.total?.totalCap && demandTotals.under6 ? (supplyByDistrict.total.totalCap / demandTotals.under6).toFixed(2) : '...'}</div><div className="stat-label">Slots/Child</div></div>
                                     <div className="stat-pill"><div className="stat-value">{demandTotals.under6?.toLocaleString()}</div><div className="stat-label">All Children &lt;6</div></div>
                                 </>}
                                 <button className={'share-btn' + (copied ? ' copied' : '')} onClick={copyShareLink}
@@ -2493,11 +2959,6 @@
                         {/* Demand Pressure Lens toggle — overlay tight/balanced/slack pills on each area */}
                         {geoView !== 'pressure' && (
                             <div className="saturation-toggle-row">
-                                <label className="saturation-toggle">
-                                    <input type="checkbox" checked={saturationOn}
-                                        onChange={e => setSaturationOn(e.target.checked)} />
-                                    Show demand pressure
-                                </label>
                                 {saturationOn && (
                                     <div className="saturation-mode-row">
                                         <span>Mode:</span>
@@ -2526,14 +2987,6 @@
                                     <div className="lc-value">{supplyByDistrict.total?.totalCap?.toLocaleString() || '...'}</div>
                                     <div className="lc-label">Licensed Slots</div>
                                     <div className="lc-context">Serving {demandTotals.under6?.toLocaleString()} children under 6 (all incomes)</div>
-                                </div>
-                                <div className={'landscape-card' + (saturationOn ? ' sat-row-' + getSaturation(saturationMode === 'elfa' ? (supplyByDistrict.total?.elfaCap || 0) : (supplyByDistrict.total?.totalCap || 0), demandTotals.under6).color : '')}>
-                                    <div className="lc-value">{(() => {
-                                        const slots = saturationMode === 'elfa' ? (supplyByDistrict.total?.elfaCap || 0) : (supplyByDistrict.total?.totalCap || 0);
-                                        return demandTotals.under6 > 0 ? (slots / demandTotals.under6).toFixed(2) : '...';
-                                    })()}</div>
-                                    <div className="lc-label">{saturationOn && saturationMode === 'elfa' ? 'ELFA Slots/Child' : 'Slots per Child'}</div>
-                                    <div className="lc-context">Many families use parental, FFN, or license-exempt care by choice</div>
                                 </div>
                                 <div className="landscape-card">
                                     <div className="lc-value">{supplyByDistrict.total?.elfaCap?.toLocaleString() || '...'}</div>
@@ -2569,7 +3022,6 @@
                                                 <tr><td style={{textAlign: 'left'}}>ELFA Contracted Capacity</td><td>{supplyByDistrict.total?.elfaCap?.toLocaleString() || '...'}</td></tr>
                                                 <tr><td style={{textAlign: 'left'}}>ELFA % of Licensed</td><td>{supplyByDistrict.total?.totalCap > 0 ? Math.round((supplyByDistrict.total?.elfaCap || 0) / supplyByDistrict.total.totalCap * 100) + '%' : '...'}</td></tr>
                                                 <tr><td style={{textAlign: 'left'}}>Infant/Toddler Center Slots</td><td>{supplyByDistrict.total?.infantCap?.toLocaleString() || '...'}</td></tr>
-                                                <tr><td style={{textAlign: 'left'}}>Licensed Slots per Child &lt;6</td><td>{supplyByDistrict.total?.totalCap && demandTotals.under6 ? (supplyByDistrict.total.totalCap / demandTotals.under6).toFixed(2) : '...'}</td></tr>
                                             </tbody>
                                         </table>
                                     </div>
@@ -2641,20 +3093,6 @@
                                     <div className="lc-label">Licensed Slots</div>
                                     <div className="lc-context">District {selectedDistrict}</div>
                                 </div>
-                                <div className={'landscape-card' + (() => {
-                                    if (!saturationOn) return '';
-                                    const u6 = selectedDistrictDemand.under3 + selectedDistrictDemand.age3_4 + selectedDistrictDemand.age5;
-                                    const slots = saturationMode === 'elfa' ? selectedDistrictSupply.elfaCap : selectedDistrictSupply.totalCap;
-                                    return ' sat-row-' + getSaturation(slots, u6).color;
-                                })()}>
-                                    <div className="lc-value">{(() => {
-                                        const u6 = selectedDistrictDemand.under3 + selectedDistrictDemand.age3_4 + selectedDistrictDemand.age5;
-                                        const slots = (saturationOn && saturationMode === 'elfa') ? selectedDistrictSupply.elfaCap : selectedDistrictSupply.totalCap;
-                                        return u6 > 0 ? (slots / u6).toFixed(2) : '-';
-                                    })()}</div>
-                                    <div className="lc-label">{saturationOn && saturationMode === 'elfa' ? 'ELFA Slots/Child' : 'Slots per Child'}</div>
-                                    <div className="lc-context">{saturationOn && saturationMode === 'elfa' ? 'ELFA-contracted slots / children under 6' : 'Licensed slots / children under 6'}</div>
-                                </div>
                                 <div className="landscape-card">
                                     <div className="lc-value">{selectedDistrictSupply.elfaCap.toLocaleString()}</div>
                                     <div className="lc-label">ELFA Contracted</div>
@@ -2687,7 +3125,6 @@
                                         <tr><td style={{textAlign: 'left'}}>Children Under 6</td><td>{(selectedDistrictDemand.under3 + selectedDistrictDemand.age3_4 + selectedDistrictDemand.age5).toLocaleString()}</td></tr>
                                         <tr><td style={{textAlign: 'left'}}>HH &le;110% AMI</td><td>{selectedDistrictDemand.le110.toLocaleString()}</td></tr>
                                         <tr><td style={{textAlign: 'left'}}>HH &le;200% AMI</td><td>{(selectedDistrictDemand.le110 + selectedDistrictDemand.b110_150 + selectedDistrictDemand.b150_200).toLocaleString()}</td></tr>
-                                        <tr><td style={{textAlign: 'left'}}>Slots per Child</td><td>{(() => { const u6 = selectedDistrictDemand.under3 + selectedDistrictDemand.age3_4 + selectedDistrictDemand.age5; return u6 > 0 ? (selectedDistrictSupply.totalCap / u6).toFixed(2) : '-'; })()}</td></tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -2700,6 +3137,28 @@
                                 </div>
                             </div>
                         </>}
+
+                        {/* Corridor reference map (always mounted, display toggled — Leaflet
+                            needs a sized container, so it is built once and revealed) */}
+                        <div style={{display: geoView === 'corridor' ? 'block' : 'none', marginBottom: '28px'}}>
+                            <h3>Corridor Reference Map</h3>
+                            <p style={{margin: '0 0 10px', fontSize: '13px', color: '#555', lineHeight: 1.5}}>
+                                <strong>Corridors are a grouping used on this page, not an official
+                                City boundary.</strong> Each one is a set of whole supervisor
+                                districts, so every district belongs to exactly one corridor and
+                                nothing is split. District numbers are shown on the map.
+                            </p>
+                            <div id="corridor-map" ref={corridorMapRef} style={{height: '360px', borderRadius: '8px', border: '1px solid #e0e0e0', marginBottom: '8px'}}></div>
+                            <div style={{display: 'flex', flexWrap: 'wrap', gap: '6px 18px', fontSize: '12px', color: '#444', marginBottom: '16px'}}>
+                                {Object.entries(CORRIDORS).map(([name, ds]) => (
+                                    <span key={name}>
+                                        <span style={{display: 'inline-block', width: 11, height: 11, borderRadius: 2,
+                                                      background: CORRIDOR_COLORS[name], marginRight: 6, verticalAlign: 'middle'}}></span>
+                                        <strong>{name}</strong> &mdash; district{ds.length > 1 ? 's' : ''} {ds.join(', ')}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
 
                         {/* ===== CORRIDOR VIEW ===== */}
                         {geoView === 'corridor' && <>
@@ -2721,7 +3180,6 @@
                                             <th>ELFA Capacity</th>
                                             <th>ELFA %</th>
                                             <th>Children Under 6</th>
-                                            <th>{saturationOn && saturationMode === 'elfa' ? 'ELFA Slots/Child' : 'Slots per Child'}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -2742,7 +3200,6 @@
                                                 <td>{c.supply.elfaCap.toLocaleString()}</td>
                                                 <td>{elfaPct}%</td>
                                                 <td>{c.demand.under6.toLocaleString()}</td>
-                                                <td style={{fontWeight: saturationOn ? 700 : 400}}>{visibleRatio > 0 ? visibleRatio.toFixed(2) : '-'}</td>
                                             </tr>;
                                         })}
                                     </tbody>
@@ -2789,18 +3246,6 @@
                                     <div className="lc-label">Children Under 6</div>
                                     <div className="lc-context">All incomes in corridor</div>
                                 </div>
-                                <div className={'landscape-card' + (() => {
-                                    if (!saturationOn) return '';
-                                    const slots = saturationMode === 'elfa' ? corridorSupplyTotals.elfaCap : corridorSupplyTotals.totalCap;
-                                    return ' sat-row-' + getSaturation(slots, corridorDemandTotals.under6).color;
-                                })()}>
-                                    <div className="lc-value">{(() => {
-                                        const slots = (saturationOn && saturationMode === 'elfa') ? corridorSupplyTotals.elfaCap : corridorSupplyTotals.totalCap;
-                                        return corridorDemandTotals.under6 > 0 ? (slots / corridorDemandTotals.under6).toFixed(2) : '-';
-                                    })()}</div>
-                                    <div className="lc-label">{saturationOn && saturationMode === 'elfa' ? 'ELFA Slots/Child' : 'Slots per Child'}</div>
-                                    <div className="lc-context">{saturationOn && saturationMode === 'elfa' ? 'ELFA-contracted slots / children under 6' : 'Licensed slots / children under 6'}</div>
-                                </div>
                             </div>
 
                             <h3>{corridor} &mdash; Licensed Supply by District</h3>
@@ -2813,7 +3258,6 @@
                                             <th>ELFA Capacity</th>
                                             <th>ELFA %</th>
                                             <th>All Children Under 6</th>
-                                            <th>{saturationOn && saturationMode === 'elfa' ? 'ELFA Slots/Child' : 'Slots per Child'}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -2834,7 +3278,6 @@
                                                 <td>{(supply.elfaCap || 0).toLocaleString()}</td>
                                                 <td>{elfaPct}%</td>
                                                 <td>{under6.toLocaleString()}</td>
-                                                <td style={{fontWeight: saturationOn ? 700 : 400}}>{visibleRatio > 0 ? visibleRatio.toFixed(2) : '-'}</td>
                                             </tr>;
                                         })}
                                     </tbody>
@@ -2845,7 +3288,6 @@
                                             <td>{corridorSupplyTotals.elfaCap.toLocaleString()}</td>
                                             <td>{corridorSupplyTotals.totalCap > 0 ? Math.round(corridorSupplyTotals.elfaCap / corridorSupplyTotals.totalCap * 100) : 0}%</td>
                                             <td>{corridorDemandTotals.under6?.toLocaleString()}</td>
-                                            <td>{corridorDemandTotals.under6 > 0 ? (corridorSupplyTotals.totalCap / corridorDemandTotals.under6).toFixed(2) : '-'}</td>
                                         </tr>
                                     </tfoot>
                                 </table>
@@ -2902,20 +3344,6 @@
                                     <div className="lc-label">Children Under 6</div>
                                     <div className="lc-context">All incomes</div>
                                 </div>
-                                <div className={'landscape-card' + (() => {
-                                    if (!saturationOn) return '';
-                                    const u6 = selectedZipDemand.under3 + selectedZipDemand.age3_4 + selectedZipDemand.age5;
-                                    const slots = saturationMode === 'elfa' ? selectedZipSupply.elfaCap : selectedZipSupply.totalCap;
-                                    return ' sat-row-' + getSaturation(slots, u6).color;
-                                })()}>
-                                    <div className="lc-value">{(() => {
-                                        const u6 = selectedZipDemand.under3 + selectedZipDemand.age3_4 + selectedZipDemand.age5;
-                                        const slots = (saturationOn && saturationMode === 'elfa') ? selectedZipSupply.elfaCap : selectedZipSupply.totalCap;
-                                        return u6 > 0 ? (slots / u6).toFixed(2) : '-';
-                                    })()}</div>
-                                    <div className="lc-label">{saturationOn && saturationMode === 'elfa' ? 'ELFA Slots/Child' : 'Slots per Child'}</div>
-                                    <div className="lc-context">{saturationOn && saturationMode === 'elfa' ? 'ELFA-contracted slots / children under 6' : 'Licensed slots / children under 6'}</div>
-                                </div>
                             </div>
 
                             <h3>All ZIP Codes &mdash; Licensed Supply vs Demand</h3>
@@ -2932,10 +3360,6 @@
                                             <th style={{cursor:'pointer'}} onClick={() => handleZipSort('under6')}>Children &lt;6{zipSortArrow('under6')}</th>
                                             <th style={{cursor:'pointer'}} onClick={() => handleZipSort('le110')}>HH &le;110%{zipSortArrow('le110')}</th>
                                             <th style={{cursor:'pointer'}} onClick={() => handleZipSort('le200')}>HH &le;200%{zipSortArrow('le200')}</th>
-                                            <th style={{cursor:'pointer'}} onClick={() => handleZipSort(saturationOn && saturationMode === 'elfa' ? 'elfaSlotsPerChild' : 'slotsPerChild')}>
-                                                {saturationOn && saturationMode === 'elfa' ? 'ELFA Slots/Child' : 'Slots/Child'}
-                                                {zipSortArrow(saturationOn && saturationMode === 'elfa' ? 'elfaSlotsPerChild' : 'slotsPerChild')}
-                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -2958,7 +3382,6 @@
                                                 <td>{row.under6.toLocaleString()}</td>
                                                 <td>{row.le110.toLocaleString()}</td>
                                                 <td>{row.le200.toLocaleString()}</td>
-                                                <td style={{fontWeight: saturationOn ? 700 : 400}}>{visibleRatio > 0 ? visibleRatio.toFixed(2) : '-'}</td>
                                             </tr>
                                             );
                                         })}
@@ -2974,7 +3397,6 @@
                                             <td>{zipDemandTotals.under6?.toLocaleString()}</td>
                                             <td>{zipDemandTotals.le110.toLocaleString()}</td>
                                             <td>{(zipDemandTotals.le110 + zipDemandTotals.b110_150 + zipDemandTotals.b150_200).toLocaleString()}</td>
-                                            <td>{zipDemandTotals.under6 > 0 ? (zipSupplyTotals.totalCap / zipDemandTotals.under6).toFixed(2) : '-'}</td>
                                         </tr>
                                     </tfoot>
                                 </table>
@@ -3413,7 +3835,6 @@
                                 <p><strong>ELFA (Early Learning for All):</strong> San Francisco's universal early care and education initiative administered by the Department of Early Childhood.</p>
                                 <p><strong>AMI (Area Median Income):</strong> Regional income benchmark used to determine eligibility for housing and social programs.</p>
                                 <p><strong>FFN (Family, Friend, or Neighbor) Care:</strong> Informal care by relatives, friends, or neighbors &mdash; not tracked in licensing data.</p>
-                                <p><strong>Slots per Child:</strong> Licensed capacity divided by child population. A ratio, not an indicator of availability or need. Many families choose non-licensed arrangements.</p>
                             </div>
                             <div className="modal-section">
                                 <h3>Limitations &amp; Caveats</h3>
@@ -3460,7 +3881,7 @@
                                 <h3>CSPP (California State Preschool Program)</h3>
                                 <p><strong>Coverage:</strong> 70 facilities participate in the state-funded California State Preschool Program.</p>
                                 <p><strong>Programs Included:</strong> Chinatown Community, Compass Family Services, FACES SF, Holy Family Day Home, Kai Ming, Mission Child Care Consortium, Nihonmachi Little Friends, South of Market Child Care, and Wu Yee Children's Services.</p>
-                                <p><strong>Overlap with Head Start &mdash; DO NOT USE:</strong> this page reports that 46 facilities participate in both federal Head Start and state CSPP programs. That number is an artefact of how programme tags were assigned (agency-name matching, with the same agencies matching both programmes), not a finding about San Francisco. The federal service-location file lists 53 Head Start sites in the city. Superseded 2026-09-08. Original text follows: providing comprehensive early childhood education funding.</p>
+                                <p><strong>Overlap with Head Start:</strong> not reported. An earlier version of this dashboard said 46 facilities ran both federal Head Start and state preschool. That was an artefact: programme tags were assigned by matching about sixteen agency-name substrings, and because the same three agencies match both programmes, one became a subset of the other by construction. It described the matching rule, not San Francisco. The federal service-location file lists 53 Head Start sites in the city, which is the figure to use. Braiding is real and common, but this dataset cannot measure it. Removed 2026-09-08. Superseded text: providing comprehensive early childhood education funding.</p>
                                 <p>CSPP facilities are tagged with a green <span style={{background: '#e8f5e9', color: '#2e7d32', padding: '2px 6px', borderRadius: '8px', fontSize: '10px', fontWeight: '600'}}>CSPP</span> badge and can be filtered using the "CSPP" checkbox in Special filters.</p>
                             </div>
                             <div className="modal-section">

@@ -34,3 +34,9 @@ get-pip.py
 
 # Logs
 *.log
+
+# Secrets — never commit (this repo is public via GitHub Pages)
+.env
+.env.*
+*.key
+.census_api_key
