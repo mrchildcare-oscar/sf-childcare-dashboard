@@ -408,6 +408,8 @@
         // Centre addresses ARE public, unlike family child care homes, so these carry true
         // coordinates from the city's Enterprise Addressing System.
         const CTR_ADDED_6SEP = [
+            // 20 Sep 2026 roster: PENDING -> LICENSED. Geocoded against SF EAS (1169 ARKANSAS ST, exact).
+            {"n":"384005233","name":"CCFC-OSCARYNE WILLIAMS CENTER","type":"SINGLE LICENSED CHILD CARE CENTER","addr":"1169 ARKANSAS STREET","zip":"94107","cap":60,"lat":37.75153742,"lon":-122.39723195,"dist":"10","sup":"Shamann Walton","nh":"Potrero Hill"},
             {"n":"384005154","name":"GODDARD SCHOOL, THE","type":"SINGLE LICENSED CHILD CARE CENTER","addr":"1700 MONTGOMERY STREET #100","zip":"94111","cap":154,"lat":37.80527223,"lon":-122.40458341,"dist":"3","sup":"Danny Sauter","nh":"North Beach"},
             {"n":"384005174","name":"MINI MONDE DAYCARE & PRESCHOOL","type":"SINGLE LICENSED CHILD CARE CENTER","addr":"1112 Howard ST","zip":"94103","cap":19,"lat":37.77784833,"lon":-122.40997173,"dist":"6","sup":"Matt Dorsey","nh":"South of Market"},
             {"n":"384005182","name":"SFUSD-JOHN MCLAREN EARLY EDUCATION SCHOOL","type":"SINGLE LICENSED CHILD CARE CENTER","addr":"2055 SUNNYDALE AVENUE","zip":"94134","cap":90,"lat":37.71378671,"lon":-122.42329444,"dist":"10","sup":"Shamann Walton","nh":"McLaren Park"},
@@ -448,6 +450,7 @@
                     facility_type: c.type, facility_status: 'LICENSED',
                     facility_address: c.addr, facility_zip: Number(c.zip),
                     facility_capacity: c.cap,
+                    elfa_contracted: addedElfa(c.n),
                     latitude: c.lat, longitude: c.lon,
                     supervisor_district: c.dist || null, supervisor_name: c.sup || null,
                     neighborhood: c.nh || null,
@@ -470,6 +473,7 @@
         // the public download, large homes as well as small. So the new ones are placed at
         // postcode level, which is what the file already does for 227 of its 373 large homes.
         const LARGE_FCC_ADDED_30AUG = [
+            {n:'384005251',name:"ORNELAS, LETICIA",zip:'94124',cap:14},   // 20 Sep: PENDING -> LICENSED
             {n:'384002142',name:"BAISMAN, LISA A.",zip:'94109',cap:14},
             {n:'384004244',name:"OCON, TIFFANY S.",zip:'94112',cap:14},
             {n:'384004338',name:"CHULUUN,SARAN",zip:'94118',cap:14},
@@ -497,7 +501,7 @@
         ];
         // Mapped as LICENSED on 7 May, but not licensed on 30 August. Corrected to their real
         // status rather than deleted - a home that closed is worth seeing.
-        const LARGE_FCC_RETIRED_30AUG = { '380505406':'CLOSED', '380505746':'INACTIVE', '384000277':'CLOSED', '384000527':'CLOSED', '384000959':'CLOSED', '384001158':'CLOSED', '384001243':'CLOSED', '384001641':'INACTIVE', '384001977':'CLOSED', '384002639':'CLOSED', '384004103':'CLOSED', '384004216':'INACTIVE', '384004254':'CLOSED', '384004382':'CLOSED', '384004545':'CLOSED', '384004617':'CLOSED', '384004621':'CLOSED', '384004713':'CLOSED', '384004739':'CLOSED', '384005031':'CLOSED' };
+        const LARGE_FCC_RETIRED_30AUG = { '384004307':'CLOSED' /* 20 Sep */, '380505406':'CLOSED', '380505746':'INACTIVE', '384000277':'CLOSED', '384000527':'CLOSED', '384000959':'CLOSED', '384001158':'CLOSED', '384001243':'CLOSED', '384001641':'INACTIVE', '384001977':'CLOSED', '384002639':'CLOSED', '384004103':'CLOSED', '384004216':'INACTIVE', '384004254':'CLOSED', '384004382':'CLOSED', '384004545':'CLOSED', '384004617':'CLOSED', '384004621':'CLOSED', '384004713':'CLOSED', '384004739':'CLOSED', '384005031':'CLOSED' };
 
         // Upgraded from a small to a large licence since the map file was built. CCLD's
         // 30 August roster lists all six as licensed large homes at capacity 14; the map still has
@@ -505,6 +509,7 @@
         // otherwise they are counted twice - once here and again inside the records request's 556,
         // which already excludes them.
         const RELICENSED_SMALL_TO_LARGE_30AUG = {
+            '384004514': 14,   // 20 Sep: HUANG, DONGLI - small (cap 8) to large; see TOTAL_SMALL_HOMES
             '384005049': 14, '384004876': 14, '384004687': 14,
             '384003006': 14, '384004602': 14, '384004683': 14
         };
@@ -513,13 +518,44 @@
         // They came back; the map never noticed.
         const LARGE_FCC_REVIVED_30AUG = ['384002370', '384005132'];
 
+        // ELFA status for licences this page adds. None is on the May 2026 ELFA roster. Rule (Oscar,
+        // 2026-09-27): a provider listed BY NAME on the CARES 3.0 Eligible Program List (updated
+        // 8/24/26; pre-ELFA programs are not CARES-eligible) keeps ELFA on a new licence - the
+        // CARES/ELFA records catch up after environment review. Each old licence below is closed.
+        // Not applied: SFUSD McLaren EES 384005182 (no CARES entry); ZHU, LISA 384005202 (CARES lists
+        // only the joint ZHEN, XIAO XIA & ZHU, LISA licence).
+        const ELFA_SUCCESSOR = {
+            '384005192': '384004796',   // HERNANDEZ, DIANA (old small licence CLOSED)
+            '384005226': '384004713',   // BANOS, KAREN (old licence CLOSED 30 Aug)
+            '384005241': '384004382',   // ZHEN, JIANCI (old large licence CLOSED 30 Aug)
+            '384005240': '384004872',   // HERNANDEZ, ANA RUTH (old small licence closed, Oscar confirmed 2026-09-27)
+            '384005252': '384005064'    // CHAVEZ ARANDA, HERNAN J (the only active licence; 384005064
+                                        // and CARES's 384004652 closed, Oscar confirmed 2026-09-27)
+        };
+        const addedElfa = n => ELFA_SUCCESSOR[n] ? 'Yes' : 'No';
+
+        // Small licences the facility file still shows LICENSED but which are closed (Oscar
+        // confirmed 2026-09-27). Applied before protectSmallHomes strips licence numbers.
+        const SMALL_CLOSED_CONFIRMED = {
+            '384005064': 'CLOSED',   // CHAVEZ ARANDA - now large 384005252
+            '384004872': 'CLOSED'    // HERNANDEZ, ANA RUTH - now large 384005240
+        };
+
         // Licensed capacity per the 30 August roster. CCLD is the authority on what a licence
         // permits, so licensed large homes take their capacity from here rather than from the
         // four-month-old copy in the facility file. Sums to 4,084 across 296 homes.
-        const LARGE_FCC_CAP_30AUG = {'380503937':12,'380504126':12,'380504493':12,'380505442':12,'380505839':12,'380506144':12,'380506296':12,'380506419':14,'380506504':14,'384000052':12,'384000096':14,'384000113':14,'384000146':14,'384000219':12,'384000223':14,'384000235':14,'384000267':14,'384000468':14,'384000476':14,'384000529':14,'384000532':14,'384000536':14,'384000561':14,'384000668':14,'384000729':14,'384000735':14,'384000794':14,'384000808':14,'384000812':14,'384000813':14,'384000854':14,'384000908':14,'384000941':14,'384000990':14,'384001053':14,'384001060':14,'384001082':14,'384001123':14,'384001170':14,'384001171':14,'384001177':14,'384001201':14,'384001202':14,'384001285':14,'384001308':14,'384001337':14,'384001352':14,'384001364':14,'384001466':14,'384001543':14,'384001547':14,'384001557':14,'384001602':14,'384001605':14,'384001615':14,'384001630':14,'384001657':14,'384001664':14,'384001682':14,'384001686':14,'384001701':14,'384001750':14,'384001751':14,'384001758':14,'384001777':14,'384001783':14,'384001824':14,'384001921':14,'384001948':14,'384001992':14,'384001999':14,'384002024':14,'384002032':14,'384002048':14,'384002142':14,'384002146':14,'384002205':14,'384002222':14,'384002251':14,'384002281':14,'384002309':14,'384002310':14,'384002339':14,'384002347':14,'384002354':14,'384002365':14,'384002370':14,'384002397':14,'384002423':14,'384002432':14,'384002482':14,'384002486':14,'384002487':14,'384002533':14,'384002537':14,'384002590':14,'384002596':14,'384002600':14,'384002601':14,'384002608':14,'384002616':14,'384002624':14,'384002633':14,'384002634':14,'384002641':14,'384002665':14,'384002668':14,'384002676':14,'384002685':14,'384002713':14,'384002721':14,'384002755':14,'384002759':14,'384002773':14,'384002790':14,'384002792':14,'384002816':14,'384002817':14,'384002822':14,'384002827':14,'384002833':14,'384002969':14,'384002976':14,'384002980':14,'384002986':14,'384002995':14,'384002996':14,'384003006':14,'384003034':14,'384003053':14,'384003054':14,'384003070':14,'384003074':14,'384003092':14,'384004000':14,'384004015':14,'384004022':14,'384004032':12,'384004033':14,'384004036':14,'384004049':14,'384004056':14,'384004061':14,'384004086':14,'384004090':14,'384004099':14,'384004108':14,'384004118':14,'384004120':14,'384004121':14,'384004125':14,'384004136':14,'384004141':14,'384004142':14,'384004143':14,'384004156':14,'384004160':12,'384004182':14,'384004193':14,'384004213':14,'384004214':14,'384004225':14,'384004227':14,'384004241':14,'384004244':14,'384004246':14,'384004253':14,'384004257':14,'384004260':14,'384004270':14,'384004275':14,'384004277':14,'384004278':14,'384004286':14,'384004293':14,'384004301':14,'384004307':14,'384004309':14,'384004316':14,'384004326':14,'384004332':14,'384004338':14,'384004346':14,'384004347':14,'384004349':14,'384004356':12,'384004370':14,'384004372':14,'384004375':14,'384004378':14,'384004407':14,'384004419':14,'384004430':14,'384004457':14,'384004467':12,'384004473':14,'384004476':14,'384004483':14,'384004500':14,'384004511':14,'384004524':14,'384004537':14,'384004546':14,'384004553':14,'384004555':14,'384004558':14,'384004602':14,'384004607':14,'384004611':14,'384004615':12,'384004630':14,'384004650':14,'384004656':14,'384004662':14,'384004670':14,'384004671':14,'384004672':14,'384004673':14,'384004680':14,'384004682':14,'384004683':14,'384004686':14,'384004687':14,'384004692':14,'384004696':14,'384004699':12,'384004701':14,'384004722':14,'384004723':14,'384004726':14,'384004728':14,'384004737':14,'384004738':12,'384004742':14,'384004749':14,'384004755':14,'384004756':12,'384004759':14,'384004765':14,'384004766':14,'384004780':14,'384004784':14,'384004785':14,'384004799':14,'384004808':14,'384004822':14,'384004829':14,'384004833':14,'384004836':14,'384004851':14,'384004864':14,'384004865':12,'384004876':14,'384004880':14,'384004889':14,'384004897':12,'384004902':14,'384004906':14,'384004907':12,'384004920':12,'384004929':12,'384004931':14,'384004933':14,'384004936':12,'384004949':12,'384004952':14,'384004955':14,'384004962':14,'384004963':12,'384004968':12,'384004973':14,'384004981':14,'384004990':14,'384004999':12,'384005018':14,'384005024':14,'384005040':14,'384005049':14,'384005058':14,'384005078':14,'384005110':14,'384005121':14,'384005132':14,'384005137':14,'384005148':14,'384005153':12,'384005162':14,'384005179':12,'384005192':14,'384005193':14,'384005202':14,'384005214':12,'384005226':14,'384005240':14,'384005241':14,'384005252':14};
+        const LARGE_FCC_CAP_30AUG = {'384004514':14,'384005251':14,'380503937':12,'380504126':12,'380504493':12,'380505442':12,'380505839':12,'380506144':12,'380506296':12,'380506419':14,'380506504':14,'384000052':12,'384000096':14,'384000113':14,'384000146':14,'384000219':12,'384000223':14,'384000235':14,'384000267':14,'384000468':14,'384000476':14,'384000529':14,'384000532':14,'384000536':14,'384000561':14,'384000668':14,'384000729':14,'384000735':14,'384000794':14,'384000808':14,'384000812':14,'384000813':14,'384000854':14,'384000908':14,'384000941':14,'384000990':14,'384001053':14,'384001060':14,'384001082':14,'384001123':14,'384001170':14,'384001171':14,'384001177':14,'384001201':14,'384001202':14,'384001285':14,'384001308':14,'384001337':14,'384001352':14,'384001364':14,'384001466':14,'384001543':14,'384001547':14,'384001557':14,'384001602':14,'384001605':14,'384001615':14,'384001630':14,'384001657':14,'384001664':14,'384001682':14,'384001686':14,'384001701':14,'384001750':14,'384001751':14,'384001758':14,'384001777':14,'384001783':14,'384001824':14,'384001921':14,'384001948':14,'384001992':14,'384001999':14,'384002024':14,'384002032':14,'384002048':14,'384002142':14,'384002146':14,'384002205':14,'384002222':14,'384002251':14,'384002281':14,'384002309':14,'384002310':14,'384002339':14,'384002347':14,'384002354':14,'384002365':14,'384002370':14,'384002397':14,'384002423':14,'384002432':14,'384002482':14,'384002486':14,'384002487':14,'384002533':14,'384002537':14,'384002590':14,'384002596':14,'384002600':14,'384002601':14,'384002608':14,'384002616':14,'384002624':14,'384002633':14,'384002634':14,'384002641':14,'384002665':14,'384002668':14,'384002676':14,'384002685':14,'384002713':14,'384002721':14,'384002755':14,'384002759':14,'384002773':14,'384002790':14,'384002792':14,'384002816':14,'384002817':14,'384002822':14,'384002827':14,'384002833':14,'384002969':14,'384002976':14,'384002980':14,'384002986':14,'384002995':14,'384002996':14,'384003006':14,'384003034':14,'384003053':14,'384003054':14,'384003070':14,'384003074':14,'384003092':14,'384004000':14,'384004015':14,'384004022':14,'384004032':12,'384004033':14,'384004036':14,'384004049':14,'384004056':14,'384004061':14,'384004086':14,'384004090':14,'384004099':14,'384004108':14,'384004118':14,'384004120':14,'384004121':14,'384004125':14,'384004136':14,'384004141':14,'384004142':14,'384004143':14,'384004156':14,'384004160':12,'384004182':14,'384004193':14,'384004213':14,'384004214':14,'384004225':14,'384004227':14,'384004241':14,'384004244':14,'384004246':14,'384004253':14,'384004257':14,'384004260':14,'384004270':14,'384004275':14,'384004277':14,'384004278':14,'384004286':14,'384004293':14,'384004301':14,'384004307':14,'384004309':14,'384004316':14,'384004326':14,'384004332':14,'384004338':14,'384004346':14,'384004347':14,'384004349':14,'384004356':12,'384004370':14,'384004372':14,'384004375':14,'384004378':14,'384004407':14,'384004419':14,'384004430':14,'384004457':14,'384004467':12,'384004473':14,'384004476':14,'384004483':14,'384004500':14,'384004511':14,'384004524':14,'384004537':14,'384004546':14,'384004553':14,'384004555':14,'384004558':14,'384004602':14,'384004607':14,'384004611':14,'384004615':12,'384004630':14,'384004650':14,'384004656':14,'384004662':14,'384004670':14,'384004671':14,'384004672':14,'384004673':14,'384004680':14,'384004682':14,'384004683':14,'384004686':14,'384004687':14,'384004692':14,'384004696':14,'384004699':12,'384004701':14,'384004722':14,'384004723':14,'384004726':14,'384004728':14,'384004737':14,'384004738':12,'384004742':14,'384004749':14,'384004755':14,'384004756':12,'384004759':14,'384004765':14,'384004766':14,'384004780':14,'384004784':14,'384004785':14,'384004799':14,'384004808':14,'384004822':14,'384004829':14,'384004833':14,'384004836':14,'384004851':14,'384004864':14,'384004865':12,'384004876':14,'384004880':14,'384004889':14,'384004897':12,'384004902':14,'384004906':14,'384004907':12,'384004920':12,'384004929':12,'384004931':14,'384004933':14,'384004936':12,'384004949':12,'384004952':14,'384004955':14,'384004962':14,'384004963':12,'384004968':12,'384004973':14,'384004981':14,'384004990':14,'384004999':12,'384005018':14,'384005024':14,'384005040':14,'384005049':14,'384005058':14,'384005078':14,'384005110':14,'384005121':14,'384005132':14,'384005137':14,'384005148':14,'384005153':12,'384005162':14,'384005179':12,'384005192':14,'384005193':14,'384005202':14,'384005214':12,'384005226':14,'384005240':14,'384005241':14,'384005252':14};
 
         function applyLargeFccDelta(rows) {
             let retired = 0, upgraded = 0;
+            rows.forEach(f => {
+                const n = String(f.facility_number || '').trim();
+                if (f.facility_type === 'SMALL FAMILY CHILD CARE HOME'
+                    && f.facility_status === 'LICENSED' && SMALL_CLOSED_CONFIRMED[n]) {
+                    f.facility_status = SMALL_CLOSED_CONFIRMED[n];
+                    f.tags = Object.assign({}, f.tags, { status_confirmed_closed_2026_09_27: true });
+                }
+            });
             rows.forEach(f => {
                 const n = String(f.facility_number || '').trim();
                 if (f.facility_type === 'SMALL FAMILY CHILD CARE HOME'
@@ -588,6 +624,7 @@
                     facility_address: null,
                     facility_zip: Number(h.zip),
                     facility_capacity: LARGE_FCC_CAP_30AUG[h.n] != null ? LARGE_FCC_CAP_30AUG[h.n] : h.cap,
+                    elfa_contracted: addedElfa(h.n),
                     latitude: cLat + rad * Math.cos(ang),
                     longitude: cLon + rad * Math.sin(ang) / Math.cos(cLat * Math.PI / 180),
                     tags: {
@@ -678,7 +715,10 @@
         // Licensed SMALL family child care homes by postcode - the count of what EXISTS.
         // Source: CDSS, released to FCCASF under a 2026 public records request. 556 homes,
         // 4,322 licensed slots, 25 postcodes, nothing redacted.
-        const TOTAL_SMALL_HOMES = 556, TOTAL_SMALL_SLOTS = 4322;
+        // The request (3 Sep) listed 556 / 4,322. One of them - 94124, cap 8, first licensed 1/3/2022,
+        // "Licensed/Pending Capacity Change" - is HUANG, DONGLI, on the 20 Sep large roster, so she
+        // is counted as large and removed here (also from 94124 below) to avoid counting her twice.
+        const TOTAL_SMALL_HOMES = 555, TOTAL_SMALL_SLOTS = 4314;
         const SMALL_FCC_PRA = {
             '94102':[13,102],
             '94103':[32,242],
@@ -697,7 +737,7 @@
             '94121':[23,176],
             '94122':[37,288],
             '94123':[6,44],
-            '94124':[53,420],
+            '94124':[52,412],
             '94127':[5,40],
             '94130':[1,8],
             '94131':[10,80],
@@ -791,6 +831,9 @@
                         facility_address: null,
                         facility_zip: Number(z),
                         facility_capacity: capBase + (capRemainder-- > 0 ? 1 : 0),
+                        // Every ELFA small home is already a mapped record (all 217 on the May
+                        // roster match the facility file), so the records-request remainder is non-ELFA.
+                        elfa_contracted: 'No',
                         latitude: cLat + rad * Math.cos(ang),
                         longitude: cLon + rad * Math.sin(ang) * lonScale,
                         tags: {
@@ -1226,7 +1269,9 @@
                 return unique.sort((a, b) => parseInt(a.number) - parseInt(b.number));
             }, [data]);
 
-            const filtered = useMemo(() => {
+            // `skip` leaves one facet's own filter out, so a facet's counts reflect every OTHER
+            // active filter (with License Status = LICENSED, ELFA Yes + No = licensed total).
+            const applyFilters = (skip) => {
                 let f = [...data];
                 if (search) {
                     const s = search.toLowerCase();
@@ -1236,9 +1281,9 @@
                                       String(x.facility_number).includes(s) ||
                                       String(x.facility_zip).includes(s));
                 }
-                if (typeF.length) f = f.filter(x => typeF.includes(x.facility_type));
-                if (statusF.length) f = f.filter(x => statusF.includes(x.facility_status));
-                if (elfaF.length) f = f.filter(x => elfaF.includes(x.elfa_contracted));
+                if (skip !== 'type' && typeF.length) f = f.filter(x => typeF.includes(x.facility_type));
+                if (skip !== 'status' && statusF.length) f = f.filter(x => statusF.includes(x.facility_status));
+                if (skip !== 'elfa' && elfaF.length) f = f.filter(x => elfaF.includes(x.elfa_contracted));
                 if (districtF.length) f = f.filter(x => {
                     if (districtF.includes('none')) {
                         return districtF.includes(x.supervisor_district) || !x.supervisor_district;
@@ -1260,7 +1305,12 @@
                     });
                 }
                 return f;
-            }, [data, search, typeF, statusF, elfaF, districtF, minCap, maxCap, sfusdOnly, prekOnly, tkOnly, headStartOnly, csppOnly, cctrOnly, mapBoundsFilter, currentBounds]);
+            };
+            const filterDeps = [data, search, typeF, statusF, elfaF, districtF, minCap, maxCap, sfusdOnly, prekOnly, tkOnly, headStartOnly, csppOnly, cctrOnly, mapBoundsFilter, currentBounds];
+            const filtered = useMemo(() => applyFilters(null), filterDeps);
+            const facetRows = useMemo(() => ({
+                type: applyFilters('type'), status: applyFilters('status'), elfa: applyFilters('elfa')
+            }), filterDeps);
 
             const stats = useMemo(() => {
                 const cap = filtered.reduce((s, f) => s + (f.facility_capacity || 0), 0);
@@ -1456,7 +1506,7 @@
                         fccCount: dists.reduce((s, d) => s + (supplyByDistrict[d]?.fccCount || 0), 0),
                         count: dists.reduce((s, d) => s + (supplyByDistrict[d]?.count || 0), 0),
                     };
-                    const demand = { le110: 0, b110_150: 0, b150_200: 0, gt200: 0, under3: 0, age3_4: 0, age5: 0 };
+                    const demand = { total_hh: 0, le110: 0, b110_150: 0, b150_200: 0, gt200: 0, under3: 0, age3_4: 0, age5: 0 };
                     DEMAND_DATA.filter(d => dists.includes(d.district)).forEach(d => {
                         Object.keys(demand).forEach(k => { demand[k] += d[k]; });
                     });
@@ -1529,6 +1579,8 @@
                         under6,
                         le110: z.le110,
                         le200: z.le110 + z.b110_150 + z.b150_200,
+                        gt200: z.gt200,
+                        allHh: z.total_hh,
                         slotsPerChild: under6 > 0 ? parseFloat((supply.totalCap / under6).toFixed(2)) : 0,
                         elfaSlotsPerChild: under6 > 0 ? parseFloat((supply.elfaCap / under6).toFixed(2)) : 0
                     };
@@ -2014,6 +2066,7 @@
                 const hiGreen1 = DEMAND_DATA.map(d => d.district === selectedDistrict ? '#1B6B4A' : 'rgba(27,107,74,0.25)');
                 const hiGreen2 = DEMAND_DATA.map(d => d.district === selectedDistrict ? '#2D8F64' : 'rgba(45,143,100,0.25)');
                 const hiOrange = DEMAND_DATA.map(d => d.district === selectedDistrict ? '#E07B3C' : 'rgba(224,123,60,0.25)');
+                const hiGray = DEMAND_DATA.map(d => d.district === selectedDistrict ? '#D9D5CE' : 'rgba(217,213,206,0.35)');
 
                 landscapeChartInst.current = new Chart(landscapeChartRef.current, {
                     type: 'bar',
@@ -2037,7 +2090,7 @@
                                 stack: 'capacity'
                             },
                             {
-                                label: 'HH w/ kids <6 \u2264110% AMI (ELFA fully funded)',
+                                label: 'HH w/ kids <6 \u2264110% AMI (Free Tuition)',
                                 data: DEMAND_DATA.map(d => d.le110),
                                 backgroundColor: hiGreen1,
                                 borderColor: '#155a3e',
@@ -2045,7 +2098,7 @@
                                 stack: 'eligible'
                             },
                             {
-                                label: 'HH w/ kids <6 110\u2013150% AMI (tuition credit)',
+                                label: 'HH w/ kids <6 110\u2013150% AMI (Full Tuition Credit)',
                                 data: DEMAND_DATA.map(d => d.b110_150),
                                 backgroundColor: hiGreen2,
                                 borderColor: '#247a54',
@@ -2053,10 +2106,18 @@
                                 stack: 'eligible'
                             },
                             {
-                                label: 'HH w/ kids <6 150\u2013200% AMI (expanding 7/1/2026)',
+                                label: 'HH w/ kids <6 150\u2013200% AMI (Half Tuition Credit)',
                                 data: DEMAND_DATA.map(d => d.b150_200),
                                 backgroundColor: hiOrange,
                                 borderColor: '#c96a30',
+                                borderWidth: 1,
+                                stack: 'eligible'
+                            },
+                            {
+                                label: 'HH w/ kids <6 >200% AMI',
+                                data: DEMAND_DATA.map(d => d.gt200),
+                                backgroundColor: hiGray,
+                                borderColor: '#bfb9ae',
                                 borderWidth: 1,
                                 stack: 'eligible'
                             }
@@ -2082,10 +2143,11 @@
                                             const s = supplyByDistrict[DEMAND_DATA[idx].district] || {};
                                             return 'Total licensed: ' + (s.totalCap || 0).toLocaleString();
                                         }
-                                        if (di >= 2 && di <= 4) {
+                                        if (di >= 2 && di <= 5) {
                                             const d = DEMAND_DATA[idx];
                                             const total = d.le110 + d.b110_150 + d.b150_200;
-                                            return 'Total ELFA-eligible HH: ' + total.toLocaleString();
+                                            return ['Eligible for ELFA tuition help (up to 200% AMI): ' + total.toLocaleString(),
+                                                    'All HH w/ kids <6: ' + d.total_hh.toLocaleString()];
                                         }
                                         return '';
                                     }
@@ -2119,7 +2181,7 @@
                 citywideChartInst.current = new Chart(citywideChartRef.current, {
                     type: 'bar',
                     data: {
-                        labels: ['Licensed Supply', 'ELFA-Eligible Demand'],
+                        labels: ['Licensed Supply', 'Households w/ Kids <6'],
                         datasets: [
                             {
                                 label: 'ELFA Contracted',
@@ -2138,7 +2200,7 @@
                                 stack: 'stack'
                             },
                             {
-                                label: 'HH w/ kids <6 \u2264110% AMI',
+                                label: 'HH w/ kids <6 \u2264110% AMI (Free Tuition)',
                                 data: [null, demandTotals.le110],
                                 backgroundColor: '#1B6B4A',
                                 borderColor: '#155a3e',
@@ -2146,7 +2208,7 @@
                                 stack: 'stack'
                             },
                             {
-                                label: 'HH w/ kids <6 110\u2013150% AMI',
+                                label: 'HH w/ kids <6 110\u2013150% AMI (Full Tuition Credit)',
                                 data: [null, demandTotals.b110_150],
                                 backgroundColor: '#2D8F64',
                                 borderColor: '#247a54',
@@ -2154,10 +2216,18 @@
                                 stack: 'stack'
                             },
                             {
-                                label: 'HH w/ kids <6 150\u2013200% AMI',
+                                label: 'HH w/ kids <6 150\u2013200% AMI (Half Tuition Credit)',
                                 data: [null, demandTotals.b150_200],
                                 backgroundColor: '#E07B3C',
                                 borderColor: '#c96a30',
+                                borderWidth: 1,
+                                stack: 'stack'
+                            },
+                            {
+                                label: 'HH w/ kids <6 >200% AMI',
+                                data: [null, demandTotals.gt200],
+                                backgroundColor: '#D9D5CE',
+                                borderColor: '#bfb9ae',
                                 borderWidth: 1,
                                 stack: 'stack'
                             }
@@ -2174,7 +2244,8 @@
                                     afterBody: function(items) {
                                         const idx = items[0].dataIndex;
                                         if (idx === 0) return 'Total licensed: ' + (t.totalCap || 0).toLocaleString();
-                                        if (idx === 1) return 'Total ELFA-eligible HH: ' + le200.toLocaleString();
+                                        if (idx === 1) return ['Eligible for ELFA tuition help (up to 200% AMI): ' + le200.toLocaleString(),
+                                                               'All HH w/ kids <6: ' + demandTotals.total_hh.toLocaleString()];
                                         return '';
                                     }
                                 }
@@ -2307,7 +2378,7 @@
                                 stack: 'capacity'
                             },
                             {
-                                label: 'HH w/ kids <6 \u2264110% AMI',
+                                label: 'HH w/ kids <6 \u2264110% AMI (Free Tuition)',
                                 data: allCorridorsTotals.map(c => c.demand.le110),
                                 backgroundColor: '#1B6B4A',
                                 borderColor: '#155a3e',
@@ -2315,7 +2386,7 @@
                                 stack: 'eligible'
                             },
                             {
-                                label: 'HH w/ kids <6 110\u2013150% AMI',
+                                label: 'HH w/ kids <6 110\u2013150% AMI (Full Tuition Credit)',
                                 data: allCorridorsTotals.map(c => c.demand.b110_150),
                                 backgroundColor: '#2D8F64',
                                 borderColor: '#247a54',
@@ -2323,10 +2394,18 @@
                                 stack: 'eligible'
                             },
                             {
-                                label: 'HH w/ kids <6 150\u2013200% AMI',
+                                label: 'HH w/ kids <6 150\u2013200% AMI (Half Tuition Credit)',
                                 data: allCorridorsTotals.map(c => c.demand.b150_200),
                                 backgroundColor: '#E07B3C',
                                 borderColor: '#c96a30',
+                                borderWidth: 1,
+                                stack: 'eligible'
+                            },
+                            {
+                                label: 'HH w/ kids <6 >200% AMI',
+                                data: allCorridorsTotals.map(c => c.demand.gt200),
+                                backgroundColor: '#D9D5CE',
+                                borderColor: '#bfb9ae',
                                 borderWidth: 1,
                                 stack: 'eligible'
                             }
@@ -2345,7 +2424,11 @@
                                         const di = items[0].datasetIndex;
                                         const c = allCorridorsTotals[idx];
                                         if (di <= 1) return 'Total licensed: ' + c.supply.totalCap.toLocaleString();
-                                        if (di >= 2) return 'Total ELFA-eligible HH: ' + (c.demand.le110 + c.demand.b110_150 + c.demand.b150_200).toLocaleString();
+                                        if (di >= 2) {
+                                            const elig = c.demand.le110 + c.demand.b110_150 + c.demand.b150_200;
+                                            return ['Eligible for ELFA tuition help (up to 200% AMI): ' + elig.toLocaleString(),
+                                                    'All HH w/ kids <6: ' + c.demand.total_hh.toLocaleString()];
+                                        }
                                         return '';
                                     }
                                 }
@@ -2395,7 +2478,7 @@
                                 stack: 'capacity'
                             },
                             {
-                                label: 'HH w/ kids <6 \u2264110% AMI',
+                                label: 'HH w/ kids <6 \u2264110% AMI (Free Tuition)',
                                 data: corridorDemand.map(d => d.le110),
                                 backgroundColor: '#1B6B4A',
                                 borderColor: '#155a3e',
@@ -2403,7 +2486,7 @@
                                 stack: 'eligible'
                             },
                             {
-                                label: 'HH w/ kids <6 110\u2013150% AMI',
+                                label: 'HH w/ kids <6 110\u2013150% AMI (Full Tuition Credit)',
                                 data: corridorDemand.map(d => d.b110_150),
                                 backgroundColor: '#2D8F64',
                                 borderColor: '#247a54',
@@ -2411,10 +2494,18 @@
                                 stack: 'eligible'
                             },
                             {
-                                label: 'HH w/ kids <6 150\u2013200% AMI',
+                                label: 'HH w/ kids <6 150\u2013200% AMI (Half Tuition Credit)',
                                 data: corridorDemand.map(d => d.b150_200),
                                 backgroundColor: '#E07B3C',
                                 borderColor: '#c96a30',
+                                borderWidth: 1,
+                                stack: 'eligible'
+                            },
+                            {
+                                label: 'HH w/ kids <6 >200% AMI',
+                                data: corridorDemand.map(d => d.gt200),
+                                backgroundColor: '#D9D5CE',
+                                borderColor: '#bfb9ae',
                                 borderWidth: 1,
                                 stack: 'eligible'
                             }
@@ -2436,10 +2527,11 @@
                                             const s = supplyByDistrict[dist] || {};
                                             return 'Total licensed: ' + (s.totalCap || 0).toLocaleString();
                                         }
-                                        if (di >= 2 && di <= 4) {
+                                        if (di >= 2 && di <= 5) {
                                             const d = DEMAND_DATA.find(x => x.district === dist);
                                             const total = d ? d.le110 + d.b110_150 + d.b150_200 : 0;
-                                            return 'Total ELFA-eligible HH: ' + total.toLocaleString();
+                                            return ['Eligible for ELFA tuition help (up to 200% AMI): ' + total.toLocaleString(),
+                                                    'All HH w/ kids <6: ' + (d ? d.total_hh : 0).toLocaleString()];
                                         }
                                         return '';
                                     }
@@ -2489,7 +2581,7 @@
                                 stack: 'capacity'
                             },
                             {
-                                label: 'HH w/ kids <6 \u2264110% AMI',
+                                label: 'HH w/ kids <6 \u2264110% AMI (Free Tuition)',
                                 data: ZIP_DEMAND_DATA.map(z => z.le110),
                                 backgroundColor: '#1B6B4A',
                                 borderColor: '#155a3e',
@@ -2497,7 +2589,7 @@
                                 stack: 'eligible'
                             },
                             {
-                                label: 'HH w/ kids <6 110\u2013150% AMI',
+                                label: 'HH w/ kids <6 110\u2013150% AMI (Full Tuition Credit)',
                                 data: ZIP_DEMAND_DATA.map(z => z.b110_150),
                                 backgroundColor: '#2D8F64',
                                 borderColor: '#247a54',
@@ -2505,10 +2597,18 @@
                                 stack: 'eligible'
                             },
                             {
-                                label: 'HH w/ kids <6 150\u2013200% AMI',
+                                label: 'HH w/ kids <6 150\u2013200% AMI (Half Tuition Credit)',
                                 data: ZIP_DEMAND_DATA.map(z => z.b150_200),
                                 backgroundColor: '#E07B3C',
                                 borderColor: '#c96a30',
+                                borderWidth: 1,
+                                stack: 'eligible'
+                            },
+                            {
+                                label: 'HH w/ kids <6 >200% AMI',
+                                data: ZIP_DEMAND_DATA.map(z => z.gt200),
+                                backgroundColor: '#D9D5CE',
+                                borderColor: '#bfb9ae',
                                 borderWidth: 1,
                                 stack: 'eligible'
                             }
@@ -2531,7 +2631,9 @@
                                             return 'Total licensed: ' + (s.totalCap || 0).toLocaleString();
                                         }
                                         if (di >= 2) {
-                                            return 'Total ELFA-eligible HH: ' + (z.le110 + z.b110_150 + z.b150_200).toLocaleString();
+                                            const elig = z.le110 + z.b110_150 + z.b150_200;
+                                            return ['Eligible for ELFA tuition help (up to 200% AMI): ' + elig.toLocaleString(),
+                                                    'All HH w/ kids <6: ' + z.total_hh.toLocaleString()];
                                         }
                                         return '';
                                     }
@@ -2665,7 +2767,7 @@
                         <div className="header-content">
                             <div>
                                 <h1>SF Child Care Dashboard <span style={{fontSize:'0.5em',fontWeight:400,opacity:0.75}}>September 2026</span></h1>
-                                <p>All licensed centres and family child care homes, including the full small-home sector. Built 8 September 2026. Homes with no public address are placed at postcode level and ringed in orange.</p>
+                                <p>All licensed centers and family child care homes, including the full small-home sector. Built Sep. 8, 2026, on a May 7, 2026 facility file updated with CCLD rosters of Sep. 20, 2026 and a Sep. 3 records request (small homes); ELFA status from SF DEC&rsquo;s May 2026 roster. Homes with no public address are placed at ZIP-code level and ringed in orange.</p>
                             </div>
                             <div className="header-stats">
                                 {tab === 'programs' ? <>
@@ -2773,7 +2875,7 @@
                                                 <div key={item} className="filter-option">
                                                     <input type="checkbox" id={id + item} checked={filter.includes(item)} onChange={() => toggle(filter, setFilter, item)} />
                                                     <label htmlFor={id + item}>{item}</label>
-                                                    <span className="filter-count">{data.filter(f => f[id === 'type' ? 'facility_type' : id === 'status' ? 'facility_status' : 'elfa_contracted'] === item).length}</span>
+                                                    <span className="filter-count">{facetRows[id].filter(f => f[id === 'type' ? 'facility_type' : id === 'status' ? 'facility_status' : 'elfa_contracted'] === item).length}</span>
                                                 </div>
                                             ))}
                                         </div>
@@ -2938,7 +3040,7 @@
 
                         {/* Disclaimer */}
                         <div className="landscape-disclaimer">
-                            Licensed child care is one of many care arrangements families use. This data shows licensed capacity relative to the child population &mdash; it does not represent total care needs or imply that all families require licensed slots. Note: Small family child care home (FCC) license data is not publicly available from CDSS, so the slot counts here only include small FCC homes with ELFA contracts. Actual licensed capacity citywide is higher than shown.
+                            Licensed child care is one of many care arrangements families use. This data shows licensed capacity relative to the child population &mdash; it does not represent total care needs or imply that all families require licensed slots. Note: CDSS does not publish addresses for small family child care homes. Small homes here come from a Sep. 2026 public records request to CDSS (556 homes, 4,322 slots; one has since moved to a large license and is counted there, leaving 555 and 4,314) and are placed at ZIP-code level, not at their addresses.
                         </div>
 
                         {/* Geographic lens selector */}
@@ -3001,12 +3103,12 @@
                                 <div className="landscape-card">
                                     <div className="lc-value">{demandTotals.le110?.toLocaleString() || '...'}</div>
                                     <div className="lc-label">HH w/ Kids &lt;6 &le;110% AMI</div>
-                                    <div className="lc-context">Currently fully funded ELFA tier</div>
+                                    <div className="lc-context">ELFA Free Tuition tier</div>
                                 </div>
                                 <div className="landscape-card">
                                     <div className="lc-value">{demandTotals.le110 != null ? (demandTotals.le110 + demandTotals.b110_150 + demandTotals.b150_200).toLocaleString() : '...'}</div>
                                     <div className="lc-label">HH w/ Kids &lt;6 &le;200% AMI</div>
-                                    <div className="lc-context">Full ELFA-eligible pool after July 2026</div>
+                                    <div className="lc-context">Eligible for ELFA Free Tuition or a Tuition Credit</div>
                                 </div>
                             </div>
 
@@ -3035,6 +3137,8 @@
                                                 <tr><td style={{textAlign: 'left'}}>Children Under 3</td><td>{demandTotals.under3?.toLocaleString() || '...'}</td></tr>
                                                 <tr><td style={{textAlign: 'left'}}>HH w/ Kids &lt;6 &le;110% AMI</td><td>{demandTotals.le110?.toLocaleString() || '...'}</td></tr>
                                                 <tr><td style={{textAlign: 'left'}}>HH w/ Kids &lt;6 &le;200% AMI</td><td>{demandTotals.le110 != null ? (demandTotals.le110 + demandTotals.b110_150 + demandTotals.b150_200).toLocaleString() : '...'}</td></tr>
+                                                <tr><td style={{textAlign: 'left'}}>HH w/ Kids &lt;6 &gt;200% AMI</td><td>{demandTotals.gt200 != null ? demandTotals.gt200.toLocaleString() : '...'}</td></tr>
+                                                <tr><td style={{textAlign: 'left'}}>All HH w/ Kids &lt;6</td><td>{demandTotals.le110 != null ? demandTotals.total_hh.toLocaleString() : '...'}</td></tr>
                                             </tbody>
                                         </table>
                                     </div>
@@ -3056,9 +3160,9 @@
 
                         {/* Citywide bar chart */}
                         {geoView === 'citywide' && <>
-                            <h3>Citywide Licensed Supply vs ELFA-Eligible Households</h3>
+                            <h3>Citywide Licensed Supply vs Households with Kids Under 6</h3>
                             <div className="landscape-chart-wrap">
-                                <div className="chart-subtitle">Total licensed capacity compared to households eligible for ELFA by income tier</div>
+                                <div className="chart-subtitle">Total licensed capacity compared to households with kids under 6, by ELFA income tier &mdash; slots and households are different units, not a coverage ratio</div>
                                 <div style={{height: '320px'}}>
                                     <canvas ref={citywideChartRef} className="landscape-chart-canvas"></canvas>
                                 </div>
@@ -3111,7 +3215,7 @@
                                 <div className="landscape-card">
                                     <div className="lc-value">{(selectedDistrictDemand.le110 + selectedDistrictDemand.b110_150 + selectedDistrictDemand.b150_200).toLocaleString()}</div>
                                     <div className="lc-label">HH &le;200% AMI</div>
-                                    <div className="lc-context">ELFA-eligible households</div>
+                                    <div className="lc-context">Eligible for ELFA Free Tuition or a Tuition Credit</div>
                                 </div>
                             </div>
 
@@ -3125,13 +3229,15 @@
                                         <tr><td style={{textAlign: 'left'}}>Children Under 6</td><td>{(selectedDistrictDemand.under3 + selectedDistrictDemand.age3_4 + selectedDistrictDemand.age5).toLocaleString()}</td></tr>
                                         <tr><td style={{textAlign: 'left'}}>HH &le;110% AMI</td><td>{selectedDistrictDemand.le110.toLocaleString()}</td></tr>
                                         <tr><td style={{textAlign: 'left'}}>HH &le;200% AMI</td><td>{(selectedDistrictDemand.le110 + selectedDistrictDemand.b110_150 + selectedDistrictDemand.b150_200).toLocaleString()}</td></tr>
+                                        <tr><td style={{textAlign: 'left'}}>HH &gt;200% AMI</td><td>{selectedDistrictDemand.gt200.toLocaleString()}</td></tr>
+                                        <tr><td style={{textAlign: 'left'}}>All HH w/ Kids &lt;6</td><td>{selectedDistrictDemand.total_hh.toLocaleString()}</td></tr>
                                     </tbody>
                                 </table>
                             </div>
 
-                            <h3>All Districts &mdash; Licensed Supply vs Eligible Households</h3>
+                            <h3>All Districts &mdash; Licensed Supply vs Households with Kids Under 6</h3>
                             <div className="landscape-chart-wrap">
-                                <div className="chart-subtitle">District {selectedDistrict} highlighted &mdash; eligibility does not equal demand</div>
+                                <div className="chart-subtitle">District {selectedDistrict} highlighted &mdash; eligibility does not equal demand &mdash; slots and households are different units, not a coverage ratio</div>
                                 <div style={{height: '380px'}}>
                                     <canvas ref={landscapeChartRef} className="landscape-chart-canvas"></canvas>
                                 </div>
@@ -3162,9 +3268,9 @@
 
                         {/* ===== CORRIDOR VIEW ===== */}
                         {geoView === 'corridor' && <>
-                            <h3>All Corridors &mdash; Licensed Supply vs Eligible Households</h3>
+                            <h3>All Corridors &mdash; Licensed Supply vs Households with Kids Under 6</h3>
                             <div className="landscape-chart-wrap">
-                                <div className="chart-subtitle">Side-by-side comparison of all four corridors</div>
+                                <div className="chart-subtitle">Side-by-side comparison of all four corridors &mdash; slots and households are different units, not a coverage ratio</div>
                                 <div style={{height: '320px'}}>
                                     <canvas ref={overviewChartRef} className="landscape-chart-canvas"></canvas>
                                 </div>
@@ -3293,9 +3399,9 @@
                                 </table>
                             </div>
 
-                            <h3>{corridor} &mdash; Licensed Supply vs Eligible Households</h3>
+                            <h3>{corridor} &mdash; Licensed Supply vs Households with Kids Under 6</h3>
                             <div className="landscape-chart-wrap">
-                                <div className="chart-subtitle">Stacked bars compare licensed capacity (ELFA + non-ELFA) against ELFA-eligible households by district</div>
+                                <div className="chart-subtitle">Stacked bars compare licensed capacity (ELFA + non-ELFA) against households with kids under 6, by ELFA income tier &mdash; slots and households are different units, not a coverage ratio</div>
                                 <div style={{height: '300px'}}>
                                     <canvas ref={corridorChartRef} className="landscape-chart-canvas"></canvas>
                                 </div>
@@ -3360,6 +3466,8 @@
                                             <th style={{cursor:'pointer'}} onClick={() => handleZipSort('under6')}>Children &lt;6{zipSortArrow('under6')}</th>
                                             <th style={{cursor:'pointer'}} onClick={() => handleZipSort('le110')}>HH &le;110%{zipSortArrow('le110')}</th>
                                             <th style={{cursor:'pointer'}} onClick={() => handleZipSort('le200')}>HH &le;200%{zipSortArrow('le200')}</th>
+                                            <th style={{cursor:'pointer'}} onClick={() => handleZipSort('gt200')}>HH &gt;200%{zipSortArrow('gt200')}</th>
+                                            <th style={{cursor:'pointer'}} onClick={() => handleZipSort('allHh')}>All HH{zipSortArrow('allHh')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -3382,6 +3490,8 @@
                                                 <td>{row.under6.toLocaleString()}</td>
                                                 <td>{row.le110.toLocaleString()}</td>
                                                 <td>{row.le200.toLocaleString()}</td>
+                                                <td>{row.gt200.toLocaleString()}</td>
+                                                <td>{row.allHh.toLocaleString()}</td>
                                             </tr>
                                             );
                                         })}
@@ -3397,14 +3507,16 @@
                                             <td>{zipDemandTotals.under6?.toLocaleString()}</td>
                                             <td>{zipDemandTotals.le110.toLocaleString()}</td>
                                             <td>{(zipDemandTotals.le110 + zipDemandTotals.b110_150 + zipDemandTotals.b150_200).toLocaleString()}</td>
+                                            <td>{zipDemandTotals.gt200.toLocaleString()}</td>
+                                            <td>{zipDemandTotals.total_hh.toLocaleString()}</td>
                                         </tr>
                                     </tfoot>
                                 </table>
                             </div>
 
-                            <h3>Licensed Supply vs Eligible Households by ZIP</h3>
+                            <h3>Licensed Supply vs Households with Kids Under 6 by ZIP</h3>
                             <div className="landscape-chart-wrap">
-                                <div className="chart-subtitle">Stacked bars compare licensed capacity (ELFA + non-ELFA) against ELFA-eligible households by ZIP code</div>
+                                <div className="chart-subtitle">Stacked bars compare licensed capacity (ELFA + non-ELFA) against households with kids under 6 by ZIP code, by ELFA income tier &mdash; slots and households are different units, not a coverage ratio</div>
                                 <div style={{height: '400px'}}>
                                     <canvas ref={zipChartRef} className="landscape-chart-canvas"></canvas>
                                 </div>
@@ -3824,10 +3936,14 @@
                                 <h3>AMI Thresholds (MOHCD 2025)</h3>
                                 <p>Area Median Income (AMI) is set annually by the Mayor's Office of Housing and Community Development. For a family of four in San Francisco:</p>
                                 <p>
-                                    <strong>&le;110% AMI:</strong> &le;$167,750 &mdash; ELFA fully funded (FREE)<br/>
-                                    <strong>110&ndash;150% AMI:</strong> $167,751&ndash;$228,750 &mdash; ELFA 100% tuition credit<br/>
-                                    <strong>150&ndash;200% AMI:</strong> $228,751&ndash;$305,000 &mdash; ELFA 50% tuition credit (effective 7/1/2026)<br/>
-                                    <strong>&gt;200% AMI:</strong> &gt;$305,000 &mdash; Market rate
+                                    The household bands on this page were estimated with these MOHCD 2025 cut-offs:<br/>
+                                    <strong>&le;110% AMI:</strong> &le;$167,750<br/>
+                                    <strong>110&ndash;150% AMI:</strong> $167,751&ndash;$228,750<br/>
+                                    <strong>150&ndash;200% AMI:</strong> $228,751&ndash;$305,000<br/>
+                                    <strong>&gt;200% AMI:</strong> &gt;$305,000
+                                </p>
+                                <p>
+                                    <strong>These are not current ELFA eligibility limits.</strong> SF DEC&rsquo;s FY 2026&ndash;27 schedule, family of four: ELFA Free Tuition up to $178,300 (110% AMI); ELFA Full Tuition Credit up to $243,150 (150% AMI); ELFA Half Tuition Credit up to $324,200 (200% AMI). Because the bands use the older, lower cut-offs, some households counted here as over 200% AMI are in fact eligible for a Half Tuition Credit.
                                 </p>
                             </div>
                             <div className="modal-section">
@@ -3839,7 +3955,7 @@
                             <div className="modal-section">
                                 <h3>Limitations &amp; Caveats</h3>
                                 <p><strong>Different data sources:</strong> Household counts (ACS S1101) and child population counts (ACS B09001) come from different ACS tables with different survey universes. Household counts measure families; child counts measure individuals. These should not be directly compared as equivalent units.</p>
-                                <p><strong>Household variable:</strong> Households with children under 6 are derived from S1101_C01_005E (HH with children under 18) multiplied by the under-6 sub-category percentages (S1101_C01_006E + S1101_C01_007E). AMI band distributions are modeled estimates, not direct survey responses.</p>
+                                <p><strong>Household variable:</strong> Households with children under 6 are derived from S1101_C01_005E (HH with children under 18) multiplied by the under-6 sub-category percentages (S1101_C01_006E + S1101_C01_007E). AMI band distributions are modeled estimates, not direct survey responses. Each band is rounded separately, so the bands can add up to 1&ndash;2 fewer than the household total. District and ZIP figures are separate estimates: 24,670 households with kids under 6 citywide by district, 24,685 by ZIP code.</p>
                                 <p><strong>ACS sampling:</strong> All numbers are sample estimates with margins of error, especially at small geographies like ZCTAs. AMI band assignments are approximate &mdash; actual household eligibility depends on family size and current income.</p>
                                 <p><strong>Geography:</strong> District boundaries follow the 2022 redistricting. Data is aggregated from ZCTAs to districts using population-weighted census block intersections.</p>
                                 <p><strong>Licensed capacity</strong> reflects what a facility is licensed to serve, not current enrollment or available openings.</p>
@@ -3881,7 +3997,7 @@
                                 <h3>CSPP (California State Preschool Program)</h3>
                                 <p><strong>Coverage:</strong> 70 facilities participate in the state-funded California State Preschool Program.</p>
                                 <p><strong>Programs Included:</strong> Chinatown Community, Compass Family Services, FACES SF, Holy Family Day Home, Kai Ming, Mission Child Care Consortium, Nihonmachi Little Friends, South of Market Child Care, and Wu Yee Children's Services.</p>
-                                <p><strong>Overlap with Head Start:</strong> not reported. An earlier version of this dashboard said 46 facilities ran both federal Head Start and state preschool. That was an artefact: programme tags were assigned by matching about sixteen agency-name substrings, and because the same three agencies match both programmes, one became a subset of the other by construction. It described the matching rule, not San Francisco. The federal service-location file lists 53 Head Start sites in the city, which is the figure to use. Braiding is real and common, but this dataset cannot measure it. Removed 2026-09-08. Superseded text: providing comprehensive early childhood education funding.</p>
+                                <p><strong>Overlap with Head Start:</strong> not reported. An earlier version of this dashboard said 46 facilities ran both federal Head Start and state preschool. That was an artifact: program tags were assigned by matching about sixteen agency-name substrings, and because the same three agencies match both programs, one became a subset of the other by construction. It described the matching rule, not San Francisco. The federal service-location file lists 53 Head Start sites in the city, which is the figure to use. Braiding is real and common, but this dataset cannot measure it. Removed 2026-09-08. Superseded text: providing comprehensive early childhood education funding.</p>
                                 <p>CSPP facilities are tagged with a green <span style={{background: '#e8f5e9', color: '#2e7d32', padding: '2px 6px', borderRadius: '8px', fontSize: '10px', fontWeight: '600'}}>CSPP</span> badge and can be filtered using the "CSPP" checkbox in Special filters.</p>
                             </div>
                             <div className="modal-section">
