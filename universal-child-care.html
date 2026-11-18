@@ -27,21 +27,23 @@
   }
   .bar {
     position: sticky; top: 0; z-index: 10;
-    background: rgba(251,250,246,.95);
+    background: rgba(251,250,246,.97);
     border-bottom: 1px solid var(--line);
-    padding: 10px 20px;
-    display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+    padding: 10px 16px;
+    display: flex; align-items: center; gap: 10px;
     font-family: Inter, system-ui, sans-serif; font-size: 14px; color: var(--muted);
   }
-  .bar label { white-space: nowrap; }
-  #google_translate_element select {
-    font: inherit; padding: 6px 8px; border: 1px solid var(--line);
-    border-radius: 6px; background: #fff; color: var(--ink);
+  .bar-label { white-space: nowrap; }
+  .langs { display: flex; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .langs::-webkit-scrollbar { display: none; }
+  .langs button {
+    flex: 0 0 auto; font: inherit; font-size: 14px; color: var(--ink);
+    background: #fff; border: 1px solid var(--line); border-radius: 999px;
+    padding: 6px 12px; cursor: pointer;
   }
-  .goog-te-gadget { font-size: 0 !important; color: transparent !important; }
-  .goog-te-gadget .goog-te-combo { font-size: 14px; margin: 0 !important; }
-  .goog-te-banner-frame, .skiptranslate iframe { display: none !important; }
-  #translate-fallback { display: none; }
+  .langs button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  #google_translate_element { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .goog-te-banner-frame, iframe.skiptranslate, .VIpgJd-ZVi9od-ORHb-OEVmcd { display: none !important; }
   main { max-width: 680px; margin: 0 auto; padding: 40px 22px 80px; }
   .kicker {
     font-family: Inter, system-ui, sans-serif; font-size: 13px; letter-spacing: .06em;
@@ -80,10 +82,20 @@
 </head>
 <body>
 
-<div class="bar">
-  <label for="google_translate_element">Language</label>
-  <div id="google_translate_element"></div>
-  <span id="translate-fallback">Use your browser's Translate option to read this in another language.</span>
+<div class="bar notranslate" translate="no">
+  <span class="bar-label">Language</span>
+  <div class="langs">
+    <button data-lang="en">English</button>
+    <button data-lang="zh-TW">繁體中文</button>
+    <button data-lang="zh-CN">简体中文</button>
+    <button data-lang="es">Español</button>
+    <button data-lang="vi">Tiếng Việt</button>
+    <button data-lang="tl">Tagalog</button>
+    <button data-lang="ru">Русский</button>
+    <button data-lang="ko">한국어</button>
+    <button data-lang="ar">العربية</button>
+  </div>
+  <div id="google_translate_element" aria-hidden="true"></div>
 </div>
 
 <main>
@@ -182,13 +194,49 @@
       autoDisplay: false
     }, 'google_translate_element');
   }
-  // If the translate widget can't load, point people to the browser's built-in translate.
-  setTimeout(function () {
-    if (!document.querySelector('#google_translate_element select')) {
-      document.querySelector('.bar label').style.display = 'none';
-      document.getElementById('translate-fallback').style.display = 'inline';
+
+  // Fallback: Google's translate proxy works even where the widget can't load
+  // (some phone in-app browsers). It opens the same page, translated.
+  function proxyUrl(lang) {
+    var host = location.hostname.replace(/-/g, '--').replace(/\./g, '-');
+    return 'https://' + host + '.translate.goog' + location.pathname +
+      '?_x_tr_sl=en&_x_tr_tl=' + lang + '&_x_tr_hl=' + lang;
+  }
+
+  function clearCookie() {
+    var exp = '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+    document.cookie = 'googtrans' + exp;
+    document.cookie = 'googtrans' + exp + '; domain=' + location.hostname;
+  }
+
+  function setActive(lang) {
+    document.querySelectorAll('.langs button').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.lang === lang);
+    });
+  }
+
+  function translateTo(lang) {
+    var combo = document.querySelector('#google_translate_element select');
+    if (lang === 'en') {
+      clearCookie();
+      location.reload();
+      return;
     }
-  }, 4000);
+    if (combo) {
+      combo.value = lang;
+      combo.dispatchEvent(new Event('change'));
+      setActive(lang);
+    } else {
+      location.href = proxyUrl(lang);
+    }
+  }
+
+  document.querySelectorAll('.langs button').forEach(function (b) {
+    b.addEventListener('click', function () { translateTo(b.dataset.lang); });
+  });
+
+  var m = document.cookie.match(/googtrans=\/en\/([^;]+)/);
+  setActive(m ? m[1] : 'en');
 </script>
 <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </body>
