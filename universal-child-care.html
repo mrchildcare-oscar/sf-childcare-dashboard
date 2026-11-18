@@ -238,6 +238,15 @@
   var m = document.cookie.match(/googtrans=\/en\/([^;]+)/);
   setActive(m ? m[1] : 'en');
 </script>
-<script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+<script>
+  // On Google's translate proxy, let the proxy do the work: hide our bar, skip the widget.
+  if (/\.translate\.goog$/.test(location.hostname)) {
+    document.querySelector('.bar').style.display = 'none';
+  } else {
+    var gt = document.createElement('script');
+    gt.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+    document.body.appendChild(gt);
+  }
+</script>
 </body>
 </html>
